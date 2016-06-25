@@ -2,12 +2,12 @@
  * FabricDB Byte Order Routines
  *
  * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
- * 
+ *
  * This file may be modified and distributed under the terms
  * of the MIT license. See the LICENSE file for details.
  *
  ******************************************************************
- * 
+ *
  * Created: January 29, 2016
  * Modified: January 29, 2016
  * Author: Mark Wardle
@@ -142,6 +142,6 @@ uint64_t intrev64(uint64_t v);
 #define letohu64(v) intrev64(v)
 #define letohi64(v) (int64_t) memrev64((uint64_t)v)
 
-#endif
+#endif /* (BYTE_ORDER == LITTLE_ENDIAN) */
 
 #endif /* __FABRICDB_BYTEORDER_H */
