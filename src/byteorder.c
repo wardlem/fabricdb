@@ -2,18 +2,18 @@
  * FabricDB Byte Order Routines
  *
  * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
- * 
+ *
  * This file may be modified and distributed under the terms
  * of the MIT license. See the LICENSE file for details.
  *
  ******************************************************************
- * 
+ *
  * Created: January 29, 2016
- * Modified: January 29, 2016
+ * Modified: June 25, 2016
  * Author: Mark Wardle
  * Description:
  *     Defines operations for manipulating the ordering of bytes.
- * Credit: This contents of this file are taken from Redis.
+ * Credit: The contents of this file are taken from Redis.
  *
  ******************************************************************/
 
@@ -75,3 +75,7 @@ uint64_t intrev64(uint64_t v) {
     memrev64(&v);
     return v;
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_byteorder.c"
+#endif

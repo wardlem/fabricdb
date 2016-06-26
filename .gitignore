@@ -1,0 +1,10 @@
+*.o
+*~
+runtest
+*.gcda
+*.gcno
+*.tmp
+*.gcov
+*.info
+*.dSYM/
+test_coverage/

@@ -29,37 +29,49 @@ typedef struct FdbMutex {
 } FdbMutex;
 
 static int mutexes_initialized = 0;
-static FdbMutex mutexes[1];
+static FdbMutex mutexes[FDB_MUTEX_COUNT];
 
 void fdb_init_mutexes() {
+
+    pthread_mutexattr_t attr;
+    int i;
+
     if (mutexes_initialized) {
         return;
     }
 
-    int i;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+
     for(i = 0; i < FDB_MUTEX_COUNT; i++) {
-        pthread_mutex_init(&(mutexes[i].mutex), NULL);
+        pthread_mutex_init(&(mutexes[i].mutex), &attr);
         mutexes[i].refCount = 0;
         mutexes[i].owner = 0;
     }
+
+    pthread_mutexattr_destroy(&attr);
 
     mutexes_initialized = 1;
 }
 
 void fdb_enter_mutex(int mutexId) {
+    int rc;
+
     assert(mutexes_initialized);
     assert(mutexId < FDB_MUTEX_COUNT);
-    FdbMutex m = mutexes[mutexId];
+    FdbMutex *m = &mutexes[mutexId];
     pthread_t self = pthread_self();
-    if (m.refCount > 0 && m.owner == self) {
+
+    rc = pthread_mutex_lock(&(m->mutex));
+    assert(rc == 0);
+
+    if (m->refCount > 0 && m->owner == self) {
         /* Simply increment the count */
-        m.refCount++;
+        m->refCount++;
     } else {
-        /* Get the mutex and set refCount to 1 */
-        pthread_mutex_lock(&m.mutex);
-        assert(m.refCount == 0);
-        m.owner = self;
-        m.refCount = 1;
+        /* Set the owner refCount to 1 */
+        m->owner = self;
+        m->refCount = 1;
     }
 }
 
@@ -68,12 +80,15 @@ void fdb_leave_mutex(int mutexId) {
     assert(mutexId < FDB_MUTEX_COUNT);
 
     pthread_t self = pthread_self();
-    FdbMutex m = mutexes[mutexId];
+    FdbMutex *m = &(mutexes[mutexId]);
 
-    assert(m.owner == self && m.refCount > 0);
+    assert(m->owner == self && m->refCount > 0);
+    m->refCount--;
+    pthread_mutex_unlock(&m->mutex);
 
-    m.refCount--;
-    if (m.refCount == 0) {
-        pthread_mutex_unlock(&m.mutex);
-    }
 }
+
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_mutex.c"
+#endif

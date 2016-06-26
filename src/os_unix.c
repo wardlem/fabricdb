@@ -140,25 +140,24 @@ static int fdb_ioerror_from_errno() {
 /******************************************************************
  * FILE DESCRIPTOR LOCKING
  ******************************************************************/
-int fdb_check_reserved_lock(int fd){
-    struct flock lock;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = RESERVED_BYTE;
-    lock.l_len = 1;
-    lock.l_type = F_WRLCK;
-
-    if(fcntl(fd, F_GETLK, &lock)) {
-        return -1;
-    }
-    if (lock.l_type != F_UNLCK) {
-        return 1;
-    }
-    return 0;
-}
+// int fdb_check_reserved_lock(int fd){
+//     struct flock lock;
+//     lock.l_whence = SEEK_SET;
+//     lock.l_start = RESERVED_BYTE;
+//     lock.l_len = 1;
+//     lock.l_type = F_WRLCK;
+//
+//     if(fcntl(fd, F_GETLK, &lock)) {
+//         return -1;
+//     }
+//     if (lock.l_type != F_UNLCK) {
+//         return 1;
+//     }
+//     return 0;
+// }
 
 static int set_lock(int fd, off_t start, int type){
     struct flock lock;
-    int rc;
 
     lock.l_whence = SEEK_SET;
     lock.l_start = start;
@@ -341,7 +340,7 @@ static FileHandle* fdb_filehandle_new(int fd, const char* filePath, InodeInfo* i
     return fh;
 }
 
-static FileHandle* fdb_filehandle_destroy(FileHandle* fh) {
+static void fdb_filehandle_destroy(FileHandle* fh) {
     fdbfree(fh->filePath);
     fdbfree(fh);
 }
@@ -350,6 +349,7 @@ static int fdb_filehandle_open(const char* filePath, int flags, FileHandle **fhp
 
     /* Open the file descriptor */
     InodeInfo* info;
+    *fhp = NULL;
     int rc = FABRICDB_OK;
     int fd = fdb_fd_open(filePath, flags, DEFAULT_FILE_PERMS);
     FileHandle* fh = NULL;
@@ -432,7 +432,7 @@ int fdb_close_file(FileHandle *fh) {
 
     ufh->fd = fd;
     ufh->next = info->unusedFiles;
-    info->unusedFiles = info;
+    info->unusedFiles = ufh;
     fdb_filehandle_destroy(fh);
     fdb_inodeinfo_remove_reference(info);
 
@@ -731,7 +731,7 @@ int fdb_unlock(FileHandle *fh) {
             rc = fdb_ioerror_from_errno();
         }
 
-        info->lockLevel == FDB_NO_LOCK;
+        info->lockLevel = FDB_NO_LOCK;
     }
 
     info->lockCount--;
@@ -742,7 +742,11 @@ int fdb_unlock(FileHandle *fh) {
 
     fh->lockLevel = FDB_NO_LOCK;
 
-    end_unlock:
+    // end_unlock:
     fdb_leave_mutex(FDB_INODE_MUTEX);
     return rc;
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_os_unix.c"
+#endif

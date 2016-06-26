@@ -74,6 +74,10 @@ int fabricdb_create(const char *dbname, FabricDB **dbptr);
  */
 int fabricdb_close(FabricDB *db);
 
+
+/******************************************************************
+ * ERROR CODES
+ ******************************************************************/
 #define FABRICDB_OK 0x00000000
 #define FABRICDB_EMISUSE 0x01000000
 #define FABRICDB_EIO 0x02000000

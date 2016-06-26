@@ -108,3 +108,7 @@ size_t fabricdb_mem_size(void *ptr) {
 	void *realptr = ptr - FABRICDB_MEM_PREFIX_SIZE;
 	return *((size_t*)realptr);
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_mem.c"
+#endif
