@@ -61,25 +61,25 @@ static int fdb_fd_open(const char* filePath, int flags, int perms){
     return fd;
 }
 
-static ssize_t fdb_fd_read(int fd, uint8_t* buffer, off_t begin, size_t count){
-    return pread(fd, buffer, count, begin);
-}
+// static ssize_t fdb_fd_read(int fd, uint8_t* buffer, off_t begin, size_t count){
+//     return pread(fd, buffer, count, begin);
+// }
+//
+// static ssize_t fdb_fd_write(int fd, uint8_t* buffer, off_t begin, size_t count){
+//     return pwrite(fd, buffer, count, begin);
+// }
 
-static ssize_t fdb_fd_write(int fd, uint8_t* buffer, off_t begin, size_t count){
-    return pwrite(fd, buffer, count, begin);
-}
-
-static int fdb_fd_open_read_write(const char* path){
-    return open(path, O_RDWR, DEFAULT_FILE_PERMS);
-}
-
-static int fdb_fd_open_read_only(const char* path){
-    return open(path, O_RDONLY, DEFAULT_FILE_PERMS);
-}
-
-static int fdb_fd_create_read_write(const char* path){
-    return open(path, O_RDWR|O_CREAT|O_EXCL, DEFAULT_FILE_PERMS);
-}
+// static int fdb_fd_open_read_write(const char* path){
+//     return open(path, O_RDWR, DEFAULT_FILE_PERMS);
+// }
+//
+// static int fdb_fd_open_read_only(const char* path){
+//     return open(path, O_RDONLY, DEFAULT_FILE_PERMS);
+// }
+//
+// static int fdb_fd_create_read_write(const char* path){
+//     return open(path, O_RDWR|O_CREAT|O_EXCL, DEFAULT_FILE_PERMS);
+// }
 
 static int fdb_ioerror_from_errno() {
     int fdberrno = FABRICDB_EIO;
@@ -179,7 +179,7 @@ static int fdb_writelock_pending_byte(int fd){return set_lock(fd, PENDING_BYTE, 
 
 /* reserved byte */
 static int fdb_unlock_reserved_byte(int fd){return set_lock(fd, RESERVED_BYTE, F_UNLCK);}
-static int fdb_readlock_reserved_byte(int fd){return set_lock(fd, RESERVED_BYTE, F_RDLCK);}
+// static int fdb_readlock_reserved_byte(int fd){return set_lock(fd, RESERVED_BYTE, F_RDLCK);}
 static int fdb_writelock_reserved_byte(int fd){return set_lock(fd, RESERVED_BYTE, F_WRLCK);}
 
 /******************************************************************
@@ -410,6 +410,9 @@ int fdb_close_file(FileHandle *fh) {
        As such, an unclosed file will be tracked by the inode info
        and closed at an appropriate time. */
 
+    assert(fh);
+    assert(fh->lockLevel == FDB_NO_LOCK);
+
     int fd = fh->fd;
     UnusedFileHandle *ufh;
     InodeInfo *info = fh->inodeInfo;
@@ -459,7 +462,6 @@ int fdb_file_size(FileHandle *fh, off_t *out) {
     /* This assumes the file is not a symbolic link.
        This needs to be fixed before it is forgotten about.
        TODO */
-
 
     *out = st.st_size;
     return FABRICDB_OK;
@@ -533,6 +535,7 @@ int fdb_acquire_shared_lock(FileHandle *fh) {
         goto end_acquire_shared_lock;
     }
 
+
     if (info->lockLevel == FDB_SHARED_LOCK || info->lockLevel == FDB_RESERVED_LOCK) {
         assert(info->sharedLockCount > 0);
         fh->lockLevel = FDB_SHARED_LOCK;
@@ -540,6 +543,7 @@ int fdb_acquire_shared_lock(FileHandle *fh) {
         info->lockCount++;
         goto end_acquire_shared_lock;
     }
+
 
     assert(info->sharedLockCount == 0);
     assert(info->lockLevel == FDB_NO_LOCK);
@@ -563,6 +567,7 @@ int fdb_acquire_shared_lock(FileHandle *fh) {
     }
 
     if (rc == FABRICDB_OK) {
+        fh->lockLevel = FDB_SHARED_LOCK;
         info->lockLevel = FDB_SHARED_LOCK;
         info->lockCount++;
         info->sharedLockCount = 1;
