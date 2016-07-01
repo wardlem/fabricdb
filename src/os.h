@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: June 25, 2016
+ * Modified: July 1, 2016
  * Author: Mark Wardle
  * Description:
  *     This file declares the operating system abstraction functionality

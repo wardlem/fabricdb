@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: February 1, 2016
+ * Modified: July 1, 2016
  * Author: Mark Wardle
  * Description:
  *     Defines low-level file operations.
@@ -19,7 +19,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 
+#include "byteorder.h"
 #include "pager.h"
 #include "os.h"
 #include "mem.h"
@@ -52,28 +54,28 @@
  * |  54 |   46 | Free space for future expansion
  * +-----+------+--------------------------------
  *******************************************************************/
-#define FABRICDB_FILE_HEADER_SIZE 100
-#define FABRICDB_APPLICATION_ID_OFFSET 16
-#define FABRICDB_APPLICATION_VERSION_OFFSET 20
-#define FABRICDB_PAGE_SIZE_OFFSET 24
-#define FABRICDB_FILE_FORMAT_WRITE_VERSION_OFFSET 28
-#define FABRICDB_FILE_FORMAT_READ_VERSION_OFFSET 29
-#define FABRICDB_BYTES_RESERVED_OFFSET 30
-#define FABRICDB_CHANGE_COUNTER_OFFSET 32
-#define FABRICDB_PAGE_COUNT_OFFSET 36
-#define FABRICDB_FREE_PAGE_COUNT_OFFSET 40
-#define FABRICDB_SCHEMA_COOKIE_OFFSET 44
-#define FABRICDB_DEFAULT_CACHE_SIZE_OFFSET 48
-#define FABRICDB_DEFAULT_AUTO_VACUUM_OFFSET 52
-#define FABRICDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET 53
+#define FDB_FILE_HEADER_SIZE 100
+#define FDB_APPLICATION_ID_OFFSET 16
+#define FDB_APPLICATION_VERSION_OFFSET 20
+#define FDB_PAGE_SIZE_OFFSET 24
+#define FDB_FILE_FORMAT_WRITE_VERSION_OFFSET 28
+#define FDB_FILE_FORMAT_READ_VERSION_OFFSET 29
+#define FDB_BYTES_RESERVED_OFFSET 30
+#define FDB_CHANGE_COUNTER_OFFSET 32
+#define FDB_PAGE_COUNT_OFFSET 36
+#define FDB_FREE_PAGE_COUNT_OFFSET 40
+#define FDB_SCHEMA_COOKIE_OFFSET 44
+#define FDB_DEFAULT_CACHE_SIZE_OFFSET 48
+#define FDB_DEFAULT_AUTO_VACUUM_OFFSET 52
+#define FDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET 53
 
-#define FABRICDB_MIN_PAGE_SIZE 512;
+#define FDB_MIN_PAGE_SIZE 512
 
 /*****************************************************************
  * The standard header string that starts every FabricDB file.
  *****************************************************************/
 static const uint8_t HEADER_STRING[16] =
-	{'F','a','b','r','i','c','D','B',' ','v','e','r','s',' ','1','\0'};
+	{'F','a','b','r','i','c','D','B',' ','v','e','r','s',' ','0','1'};
 
 #define VALID_PAGE_SIZE(v) (v >= 512 && v <= 65536)
 
@@ -89,40 +91,56 @@ static const uint8_t HEADER_STRING[16] =
 #define ARR_PAGE 6     /* For array data */
 #define IND_PAGE 7     /* For indexes */
 #define P_PAGE   8     /* Keeps track of page types */
-#define FREE_PAGE 0    /* A free page */
+#define CONT_PAGE 9    /* A continuation page */
+#define FREE_PAGE 10   /* A free page */
+
+#define UNUSED_PAGE 0  /* A page that has never been used */
 
 
 /*****************************************************************
  * IO / Paging utility functions
  *****************************************************************/
-static int read_page(uint32_t pageno, uint32_t pagesize, Page **page_p, FileHandle *fh) {
+static int read_page(FileHandle *fh, uint32_t pageno, uint32_t pagesize, Page **pagep) {
 	Page *page = NULL;
 	int rc;
-	*page_p = NULL;
+	*pagep = NULL;
 
-
-
-	page = fdbmalloczero(sizeof(Page) + pagesize);
-	if (data == NULL) {
+	page = fdbmalloc(sizeof(Page));
+	if (page == NULL) {
 		return FABRICDB_ENOMEM;
 	}
-	page->data = (uint8_t*)(page + sizeof(Page));
 
-	if (rc = fdb_read(pager->dbfh, page->data, (pageno - 1) * pagesize, pagesize)) {
-		fdbfree(page);
+	page->data = (fdbmalloczero(pagesize));
+    if (page->data == NULL) {
+        fdbfree(page);
+        return FABRICDB_ENOMEM;
+    }
+
+    rc = fdb_read(fh, page->data, (pageno - 1) * pagesize, pagesize);
+	if (rc != FABRICDB_OK) {
+		fdbfree(page->data);
+        fdbfree(page);
 		return rc;
 	}
 
-	page->page_size = pagesize;
+	page->pageSize = pagesize;
+    page->dirty = 0;
+    *pagep = page;
 
 	return FABRICDB_OK;
 }
 
+static int write_page(FileHandle *fh, Page *page) {
+    // todo
+    return 0;
+}
+
 static void free_page(Page *page) {
 	if (page->next) {
-		fdbfree(page->next);
+		free_page(page->next);
 	}
-	fdbfree(page);
+	fdbfree(page->data);
+    fdbfree(page);
 }
 
 
@@ -130,26 +148,26 @@ static void free_page(Page *page) {
  * Cache routines.
  *****************************************************************/
 
-static int create_cache(uint32_t cache_size, PageCache **out) {
-	PageCache *cache = fdbmalloczero(sizeof(PageCache) + cache_size * sizeof(Page*));
-	if (cache == NULL) {
-		*out = NULL;
-		return FABRICDB_ENOMEM;
-	}
-
-	cache->cache_size = cache_size;
-	cache->hash_size = buffer_size;
-	cache->pages = (Page**)(cache + sizeof(PageCache));
-	*out = cache;
+static int create_cache(uint32_t cache_size, PageCache *out) {
+	// PageCache *cache = fdbmalloczero(sizeof(PageCache) + cache_size * sizeof(Page*));
+	// if (cache == NULL) {
+	// 	*out = NULL;
+	// 	return FABRICDB_ENOMEM;
+	// }
+    //
+	// cache->cacheSize = cache_size;
+	// cache->hashSize = buffer_size;
+	// cache->pages = (Page**)(cache + sizeof(PageCache));
+	// *out = cache;
 
 	return FABRICDB_OK;
 }
 
 static void free_cache(PageCache *cache) {
 	int i;
-	Page *pages = cache->pages;
-	for (i = 0; i < cache->hash_size; i++) {
-		if (pages[i]) {
+	Page **pages = cache->pages;
+	for (i = 0; i < cache->hashSize; i++) {
+		if (pages[i] != NULL) {
 			free_page(pages[i]);
 		}
 	}
@@ -162,39 +180,39 @@ static void cache_clear_unused(PageCache *cache) {
 
 static int cache_put(Page *page, PageCache *cache) {
 	uint32_t pageno, hash;
-	Page *pages = cache->pages;
+	Page **pages = cache->pages;
 	Page *current;
-	if (cache->cache_size  < 1) {
+	if (cache->cacheSize  < 1) {
 		/* No cache... this shouldn't happen, but just in case */
 		return FABRICDB_CACHE_FULL;
 	}
 
-	pageno = page->pageno;
-	hash = pageno % cache->hash_size;
+	pageno = page->pageNo;
+	hash = pageno % cache->hashSize;
 
-	if(cache->cache_count == cache->cache_size) {
+	if(cache->cacheCount == cache->cacheSize) {
 		cache_clear_unused(cache);
-		if (cache->cache_count == cache->cache_size) {
+		if (cache->cacheCount == cache->cacheSize) {
 			return FABRICDB_CACHE_FULL;
 		}
 	}
 
-	if (pages[hash] == NULL) {
+	if (*(pages+hash*sizeof(Page*)) == NULL) {
 		pages[hash] = page;
-		page->cache_count++;
+		cache->cacheCount++;
 		return FABRICDB_OK;
 	}
 
 	/* Make sure it isn't already in the cache */
-	current = pages[hash];
-	while(current != NULL && current->pageno != pageno) {
+	current = *(pages+hash*sizeof(Page*));
+	while(current != NULL && current->pageNo != pageno) {
 		current = current->next;
 	}
 
 	if (current == NULL) {
-		page->next = pages[hash];
-		pages[hash] = page;
-		page->cache_count++;
+		page->next = *(pages+hash*sizeof(Page*));
+		*(pages+hash*sizeof(Page*)) = page;
+		cache->cacheCount++;
 		return FABRICDB_OK;
 	}
 
@@ -204,15 +222,19 @@ static int cache_put(Page *page, PageCache *cache) {
 }
 
 static Page* cache_get(uint32_t pageno, PageCache *cache) {
+    uint32_t hash;
 	Page *page;
-	Page *pages = cache->pages;
-	if (cache->cache_size  < 1) {
+	Page **pages = cache->pages;
+
+	if (cache->cacheSize  < 1) {
 		/* No cache... this shouldn't happen, but it just in case */
 		return NULL;
 	}
 
-	page = pages[0];
-	while(page != NULL && page->pageno != pageno) {
+    hash = pageno % cache->hashSize;
+
+	page = *(pages+hash*sizeof(Page*));
+	while(page != NULL && page->pageNo != pageno) {
 		page = page->next;
 	}
 
@@ -225,10 +247,12 @@ static Page* cache_get(uint32_t pageno, PageCache *cache) {
  *******************************************************************/
 
 /* Forward declarations */
-static int pager_read_page_types(Page*, Pager*);
-
-int fdb_pager_create(const char* filepath, Pager **pager_p) {
-	*pager_p = NULL;
+static int pager_read_page_types(Pager* pager, Page* frontPage) {
+	// uin32_t page_count = pager->page_count;
+    return 0;
+}
+int fdb_pager_create(const char* filepath, Pager **pagerp) {
+	*pagerp = NULL;
 
 	Pager *pager = fdbmalloczero(sizeof(Pager));
 	if (pager == NULL) {
@@ -245,64 +269,59 @@ int fdb_pager_create(const char* filepath, Pager **pager_p) {
 	memcpy(new_filepath, filepath, path_len);
 	new_filepath[path_len] = '\0';
 
-	pager->path = new_filepath;
+	pager->filePath = new_filepath;
 	pager->dbfh = NULL;
 
 	/* Defaults */
-	pager->dbstate = {
-		0, /* file_change_counter */
-		0, /* file_page_count */
-		0, /* file_free_page_count */
-		0  /* schema_cookie */
-	};
+    pager->dbstate.fileChangeCounter = 0;
+    pager->dbstate.filePageCount = 0;
+    pager->dbstate.fileFreePageCount = 0;
+    pager->dbstate.schemaCookie = 0;
 
-	/* Defaults */
-	pager->pragma = {
-		0,    /* application_id */
-		0,    /* application_version */
-		1024, /* page_size */
-		1,    /* file_format_write_version */
-		1,    /* file_format_read_version */
-		0,    /* bytes_reserved */
-		200,  /* def_cache_size */
-		0,    /* def_auto_vacuum */
-		0,    /* def_auto_vacuum_threshold */
-		0,    /* auto_vacuum */
-		0,    /* auto_vacuum_threshold */
-		2000  /* cache_size */
-	};
+    /* Defaults */
+    pager->pragma.applicationId = 0;
+    pager->pragma.applicationVersion = 0;
+    pager->pragma.pageSize = 1024;
+    pager->pragma.fileFormatWriteVersion = 1;
+    pager->pragma.fileFormatReadVersion = 1;
+    pager->pragma.bytesReserved = 0;
+    pager->pragma.defCacheSize = 200;
+    pager->pragma.defAutoVacuum = 0;
+    pager->pragma.defAutoVacuumThreshold = 0;
+    pager->pragma.autoVacuum = 0;
+    pager->pragma.autoVacuumThreshold = 0;
+    pager->pragma.cacheSize = 200;
 
-	pager->cache = NULL;
-
-	*pager_p = pager;
+	*pagerp = pager;
 
 	return FABRICDB_OK;
-}
-
-static int pager_read_page_types(Page* front_page, Pager* pager) {
-	uin32_t page_count = pager->page_count;
 }
 
 static int fdb_pager_init_from_file(Pager *pager) {
 	int rc = FABRICDB_OK;
 	Page *front_page = NULL;
-	uint8_t *data fp_data;
+	uint8_t *fp_data;
 	int64_t file_size;
 	uint8_t header_string[16];
-	uint32_t page_size = 0;
+	uint32_t page_size;
+    uint8_t num_reserved_bytes;
 	PageCache *cache = NULL;
 
+    page_size = 0;
+
 	/* Make sure the file is at least FABRICDB_MIN_PAGE_SIZE */
-	if (rc = fdb_file_size(pager->dbfp, &file_size)) {
+    rc = fdb_file_size(pager->dbfh, &file_size);
+	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
-	if (file_size < FABRICDB_MIN_PAGE_SIZE) {
+	if (file_size < FDB_MIN_PAGE_SIZE) {
 		rc = FABRICDB_EINVALID_FILE;
 		goto pager_init_done;
 	}
 
 	/* Verify that the 16 byte header string is valid */
-	if (rc = fdb_read(pager->dbfp, header_string, 0, 16)) {
+    rc = fdb_read(pager->dbfh, header_string, 0, 16);
+	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
 	if (memcmp(header_string, HEADER_STRING, 16) != 0) {
@@ -312,50 +331,60 @@ static int fdb_pager_init_from_file(Pager *pager) {
 
 	/* Seems to be a valid FabricDB file
 	   Get a shared lock and make sure page size is valid */
-	if (rc = fdb_get_shared_lock(pager->dbfp)) {
+    rc = fdb_acquire_shared_lock(pager->dbfh);
+	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
-	if (rc = fdb_read32(FABRICB_PAGE_SIZE_OFFSET, &page_size, pager->dbfp)){
+    rc = fdb_read(pager->dbfh, (uint8_t*) &page_size, FDB_PAGE_SIZE_OFFSET, 4);
+	if (rc != FABRICDB_OK){
 		page_size = 1; /* indicate lock is acquired */
 		goto pager_init_done;
 	}
+    page_size = letohu32(page_size);
+
 	if (!VALID_PAGE_SIZE(page_size)) {
 		rc = FABRICDB_EINVALID_FILE;
 		page_size = 1;  /* indicate lock is acquired */
 		goto pager_init_done;
 	}
 
+    /* The number of reserved bytes needs to be added to the page size */
+    rc = fdb_read(pager->dbfh, &num_reserved_bytes, FDB_BYTES_RESERVED_OFFSET, 1);
+    if (rc != FABRICDB_OK) {
+        goto pager_init_done;
+    }
+
 	/* Read the first page */
-	if (rc = read_page(1, page_size, &front_page, pager->dbfp)) {
+    rc = read_page(pager->dbfh, 1, page_size + num_reserved_bytes, &front_page);
+	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
 
 	fp_data = front_page->data;
 
 	/* Read first page and set values from file */
-	pager->state = {
-		letohu32(*((uint32_t*)(fp_data + FABRICDB_FILE_CHANGE_COUNTER_OFFSET))),
-		letohu32(*((uint32_t*)(fp_data + FABRICDB_PAGE_COUNT_OFFSET))),
-		letohu32(*((uint32_t*)(fp_data + FABRICDB_FREE_PAGE_COUNT_OFFSET))),
-		letohu32(*((uint32_t*)(fp_data + FABRICDB_PAGE_COUNT_OFFSET)))
-	};
+    pager->dbstate.fileChangeCounter = letohu32(*((uint32_t*)(fp_data + FDB_CHANGE_COUNTER_OFFSET)));
+    pager->dbstate.filePageCount = letohu32(*((uint32_t*)(fp_data + FDB_PAGE_COUNT_OFFSET)));
+    pager->dbstate.fileFreePageCount = letohu32(*((uint32_t*)(fp_data + FDB_FREE_PAGE_COUNT_OFFSET)));
+    pager->dbstate.filePageCount = letohu32(*((uint32_t*)(fp_data + FDB_PAGE_COUNT_OFFSET)));
 
-	pager->pragma.application_id = letohu32(*((uint32_t*)(fp_data + FABRICDB_APPLICATION_ID_OFFSET)));
-	pager->pragma.application_version = letohu32(*((uint32_t*)(fp_data + FABRICDB_APPLICATION_VERSION_OFFSET)));
-	pager->pragma.page_size = page_size;
-	pager->pragma.file_format_write_version = *((uint8_t*)(fp_data + FABRICDB_FILE_FORMAT_WRITE_VERSION_OFFSET));
-	pager->pragma.file_format_read_version = *((uint8_t*)(fp_data + FABRICDB_FILE_FORMAT_WRITE_VERSION_OFFSET));
-	pager->pragma.bytes_reserved = *((uint8_t*)(fp_data + FABRICDB_BYTES_RESERVED_OFFSET));
-	pager->pragma.def_cache_size = *((uint8_t*)(fp_data + FABRICDB_DEFAULT_CACHE_SIZE_OFFSET));
-	pager->pragma.def_auto_vacuum = *((uint8_t*)(fp_data + FABRICDB_DEFAULT_AUTO_VACUUM));
-	pager->pragma.def_auto_vacuum_threshold = *((uint8_t*)(fp_data + FABRICDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET));
+	pager->pragma.applicationId = letohu32(*((uint32_t*)(fp_data + FDB_APPLICATION_ID_OFFSET)));
+	pager->pragma.applicationVersion = letohu32(*((uint32_t*)(fp_data + FDB_APPLICATION_VERSION_OFFSET)));
+	pager->pragma.pageSize = page_size;
+	pager->pragma.fileFormatWriteVersion = *((uint8_t*)(fp_data + FDB_FILE_FORMAT_WRITE_VERSION_OFFSET));
+	pager->pragma.fileFormatReadVersion = *((uint8_t*)(fp_data + FDB_FILE_FORMAT_WRITE_VERSION_OFFSET));
+	pager->pragma.bytesReserved = *((uint8_t*)(fp_data + FDB_BYTES_RESERVED_OFFSET));
+	pager->pragma.defCacheSize = *((uint8_t*)(fp_data + FDB_DEFAULT_CACHE_SIZE_OFFSET));
+	pager->pragma.defAutoVacuum = *((uint8_t*)(fp_data + FDB_DEFAULT_AUTO_VACUUM_OFFSET));
+	pager->pragma.defAutoVacuumThreshold = *((uint8_t*)(fp_data + FDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET));
 
-	pager->pragma.auto_vacuum = pager->pragma.def_auto_vacuum;
-	pager->pragam.auto_vacuum_threshold = pager->pragma.def_auto_vacuum_threshold;
-	pager->pragma.cache_size = pager->pragma.def_cache_size;
+	pager->pragma.autoVacuum = pager->pragma.defAutoVacuum;
+	pager->pragma.autoVacuumThreshold = pager->pragma.defAutoVacuumThreshold;
+	pager->pragma.cacheSize = pager->pragma.defCacheSize;
 
 	/* Initialize the cache. */
-	if (rc = create_cache(pager->pragma.cache_size, &pager->cache)) {
+    rc = create_cache(pager->pragma.cacheSize, &pager->cache);
+	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
 
@@ -364,15 +393,15 @@ static int fdb_pager_init_from_file(Pager *pager) {
 	   read, every lookup by id in the database takes O(1) time
 	   because the exact position in the datafile can be calculated.
 	   The downside of this is that the page page has to be maintained. */
-	pager_read_page_types(front_page, pager->cache);
+	pager_read_page_types(pager, front_page);
 
 	/* Ignore error code */
-	cache_set(front_page, pager->cache);
+	cache_put(front_page, &pager->cache);
 
 	pager_init_done:
 	if (page_size != 0) {
 		/* Release lock */
-		fdb_unlock(pager->dbfp);
+		fdb_unlock(pager->dbfh);
 	}
 
 	if(rc != FABRICDB_OK){
@@ -383,9 +412,9 @@ static int fdb_pager_init_from_file(Pager *pager) {
 		if (cache != NULL) {
 			free_cache(cache);
 		}
-		if (pager->dbfp != NULL) {
-			fdb_close_file(pager->dbfp);
-			pager->dbfp = NULL;
+		if (pager->dbfh != NULL) {
+			fdb_close_file(pager->dbfh);
+			pager->dbfh = NULL;
 		}
 	}
 
@@ -394,7 +423,9 @@ static int fdb_pager_init_from_file(Pager *pager) {
 
 int fdb_pager_init(Pager *pager) {
 	int rc;
-	if (rc = fdb_open_file_rdwr(pager->filepath, &pager->dbfp)) {
+
+    rc = fdb_open_file_rdwr(pager->filePath, &pager->dbfh);
+	if (rc != FABRICDB_OK ) {
 		return rc;
 	}
 
@@ -405,53 +436,61 @@ int fdb_pager_init_file(Pager *pager) {
 	int rc;
 	uint32_t v32;
 
-	uint8_t *buffer = fdbmalloczero(pager->pragma.page_size);
+	uint8_t *buffer = fdbmalloczero(pager->pragma.pageSize + pager->pragma.bytesReserved);
 	if (buffer == NULL) {
-		return FABRICDB_ENOMEM
+		return FABRICDB_ENOMEM;
 	}
 
 	/* Create the file */
-	if (rc = fdb_create_file(pager->filepath, &pager->dbfp)) {
+    rc = fdb_create_file(pager->filePath, &pager->dbfh);
+	if (rc != FABRICDB_OK) {
 		fdbfree(buffer);
 		return rc;
 	}
 
 	/* Write persistent pragma values */
 	memcpy(buffer, HEADER_STRING, 16);
-	v32 = htoleu32(pager->pragma.application_id);
-	memcpy(buffer + FABRICDB_APPLICATION_ID_OFFSET, &v32, 4);
-	v32 = htoleu32(pager->pragma.application_version);
-	memcpy(buffer + FABRICDB_APPLICATION_VERSION_OFFSET, &v32, 4);
-	v32 = htoleu32(pager->pragma.page_size);
-	memcpy(buffer + FABRICDB_PAGE_SIZE_OFFSET, &v32, 4);
-	*(buffer + FABRICDB_FILE_FORMAT_WRITE_VERSION_OFFSET) = pager->pragma.file_format_write_version;
-	*(buffer + FABRICDB_FILE_FORMAT_READ_VERSION_OFFSET) = pager->pragma.file_format_read_version;
-	*(buffer + FABRICDB_BYTES_RESERVED_OFFSET) = pager->pragma.bytes_reserved;
-	*(buffer + FABRICDB_DEFAULT_CACHE_SIZE_OFFSET) = pager->pragma.def_cache_size;
-	*(buffer + FABRICDB_DEFAULT_AUTO_VACUUM_OFFSET) = pager->pragma.def_auto_vacuum;
-	*(buffer + FABRICDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET) = pager->pragma.def_auto_vacuum_threshold;
+	v32 = htoleu32(pager->pragma.applicationId);
+	memcpy(buffer + FDB_APPLICATION_ID_OFFSET, &v32, 4);
+	v32 = htoleu32(pager->pragma.applicationVersion);
+	memcpy(buffer + FDB_APPLICATION_VERSION_OFFSET, &v32, 4);
+	v32 = htoleu32(pager->pragma.pageSize);
+	memcpy(buffer + FDB_PAGE_SIZE_OFFSET, &v32, 4);
+	*(buffer + FDB_FILE_FORMAT_WRITE_VERSION_OFFSET) = pager->pragma.fileFormatWriteVersion;
+	*(buffer + FDB_FILE_FORMAT_READ_VERSION_OFFSET) = pager->pragma.fileFormatReadVersion;
+	*(buffer + FDB_BYTES_RESERVED_OFFSET) = pager->pragma.bytesReserved;
+	*(buffer + FDB_DEFAULT_CACHE_SIZE_OFFSET) = pager->pragma.defCacheSize;
+	*(buffer + FDB_DEFAULT_AUTO_VACUUM_OFFSET) = pager->pragma.defAutoVacuum;
+	*(buffer + FDB_DEFAULT_AUTO_VACUUM_THRESHOLD_OFFSET) = pager->pragma.defAutoVacuumThreshold;
 
 	/* Set page count to 1 */
 	v32 = htoleu32(1);
-	memcpy(buffer + FABRICDB_PAGE_COUNT_OFFSET, &v32, 4);
+	memcpy(buffer + FDB_PAGE_COUNT_OFFSET, &v32, 4);
 
 	/* Write to disk and sync */
-	if (rc = fdb_write(pager->dbfp, buffer, 0, pager->pragma.page_size) ||
-		rc = fdb_sync(pager->dbfp)
-	) {
+    rc = fdb_write(pager->dbfh, buffer, 0, pager->pragma.pageSize + pager->pragma.bytesReserved);
+    if (rc == FABRICDB_OK) {
+        rc = fdb_sync(pager->dbfh);
+    }
+	if (rc != FABRICDB_OK) {
 		fdbfree(buffer);
-		fdb_close(pager->dbfp);
-		pager->dbfp = NULL;
+		fdb_close_file(pager->dbfh);
+		pager->dbfh = NULL;
 		return rc;
 	}
 
 	return fdb_pager_init_from_file(pager);
 }
 
-int fdb_pager_destroy(Pager *pager) {
+void fdb_pager_destroy(Pager *pager) {
 
 }
 
 /*******************************************************************
  * Pragma manipulation.
  *******************************************************************/
+
+
+ #ifdef FABRICDB_TESTING
+ #include "../test/test_pager.c"
+ #endif

@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 27, 2016
- * Modified: June 25, 2016
+ * Modified: July 1, 2016
  * Author: Mark Wardle
  * Description:
  *     This file provides the public api of the Fabric library.
@@ -22,7 +22,7 @@
 /**
  * Each open FabricDB database is represented by a point to an
  * opaque fabricdb structure.  A fabricdb structure is created
- * with the `fabricdb_open()` or the `fabricdb_create` functions
+ * with the `fabricdb_open()` or the `fabricdb_create()` functions
  * and destroyed with the`fabricdb_close()` function.  Most
  * database operations require a valid fabricdb object.
  */

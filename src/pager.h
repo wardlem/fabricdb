@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: January 31, 2016
+ * Modified: July 1, 2016
  * Author: Mark Wardle
  * Description:
  *     Declares low-level file operations.
@@ -21,58 +21,62 @@
 
 #include <stdint.h>
 
+#include "os.h"
+
 typedef struct Page {
-	uint32_t page_size;
-	Page *next;
-	uint8_t dirty;
-	uint8_t *data;
+    uint32_t pageSize;     /* The size of the page - equal to the pragma's page_size */
+    uint32_t pageNo;
+    struct Page *next;     /* Used for creating a bucket by the cache handler */
+    uint8_t *data;         /* The data for the page, identical to what is on disc */
+    uint8_t pageType;      /* The type of page this is */
+    uint8_t dirty;         /* Set to 1 if the page needs to be written to disc */
 } Page;
 
 typedef struct PageCache {
-	uint32_t cache_size;     /* Max size of cache */
-	uint32_t cache_count;    /* Count of currently cached pages */
-	uint32_t hash_size;      /* The allocated size of pages field (in pointers) */
-	Page *pages;             /* Simple hashmap of cached pages for quick lookup */
+    uint32_t cacheSize;      /* Max size of cache */
+    uint32_t cacheCount;     /* Count of currently cached pages */
+    uint32_t hashSize;       /* The allocated size of pages field (in pointers) */
+    Page **pages;            /* Simple hashmap of cached pages for quick lookup */
 } PageCache;
 
-typedef DBState {
-	uint32_t file_change_counter;
-	uint32_t file_page_count;
-	uint32_t file_freepage_count;
-	uint32_t schema_cookie;
+typedef struct DBState {
+    uint32_t fileChangeCounter;   /* Incremented every time a write transaction completes */
+    uint32_t filePageCount;       /* The number of pages contained in the file */
+    uint32_t fileFreePageCount;   /* The number of pages that are no longer in use */
+    uint32_t schemaCookie;        /* Tracks changes to the database schema */
 } DBState;
 
 typedef struct Pragma {
-	/* Persistent pragmas
-	   Thes can only be set when creating a new database file and can not
-	   be altered after a database is fully initialized.
-	*/
-	uint32_t application_id;
-	uint32_t application_version
-	uint32_t page_size;
-	uint8_t file_format_write_version;n
-	uint8_t file_format_read_version;
-	uint8_t bytes_reserved;
-	uint8_t def_cache_size;
-	uint8_t def_auto_vacuum;
-	uint8_t def_auto_vacuum_threshold;
+    /* Persistent pragmas
+       Thes can only be set when creating a new database file and can not
+       be altered after a database is fully initialized.
+    */
+    uint32_t applicationId;            /* Application defined idenitifier */
+    uint32_t applicationVersion;       /* Application definfed version number */
+    uint32_t pageSize;                 /* The size of a database page */
+    uint8_t fileFormatWriteVersion;    /* Always 1, for now : 1 = journal */
+    uint8_t fileFormatReadVersion;     /* Always 1, for now : 1 = journal */
+    uint8_t bytesReserved;             /* The number of bytes reserved at the end of each page, typically 0 */
+    uint8_t defCacheSize;              /* The suggested cache size */
+    uint8_t defAutoVacuum;             /* Suggestion for whether the database should be automatically vacuumed */
+    uint8_t defAutoVacuumThreshold;    /* Suggestion for the number of empty pages before a vacuum operation is run */
 
-	/* Non-persistent pragmas
-	   These can be altered at run time and do not persist across
-	   database sessions.
-	*/
-	uint8_t auto_vacuum;
-	uint8_t auto_vacuum_threshold;
-	uint32_t cache_size; // in pages
+    /* Non-persistent pragmas
+       These can be altered at run time and do not persist across
+       database sessions.
+    */
+    uint8_t autoVacuum;               /* Whether or not to automatically vacuum */
+    uint8_t autoVacuumThreshold;      /* The number of free pages that will trigger a vacuum operation */
+    uint32_t cacheSize;               /* The number of pages the cache will hold */
 } Pragma;
 
 typedef struct Pager {
-	const char* path;
-	fabricdb_fh *dbfh;
-	fabricdb_fh *jafh;
-	fabricdb_state dbstate;
-	fabricdb_pragma pragma;
-	PageCache *cache;
+	const char* filePath;
+	FileHandle *dbfh;          /* File handle for the database */
+	FileHandle *jfh;           /* File handle for the journal */
+	DBState dbstate;
+	Pragma pragma;
+	PageCache cache;
 } Pager;
 
 
@@ -144,7 +148,7 @@ int fabricdb_pager_destroy(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_page_size(uint32_t size, Pager *pager);
+int fabricdb_pager_set_page_size(Pager *pager, uint32_t size);
 
 /**
  * Returns the page size set for the database.
@@ -170,7 +174,7 @@ uint32_t fabricdb_pager_get_page_size(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_application_version(uint32_t version, Pager *pager);
+int fabricdb_pager_set_application_version(Pager *pager, uint32_t version);
 
 /**
 * Returns the application version set for the database.
@@ -196,7 +200,7 @@ uint32_t fabricdb_pager_get_application_version(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_application_id(uint32_t version, Pager *pager);
+int fabricdb_pager_set_application_id(Pager *pager, uint32_t version);
 
 /**
 * Returns the application id set for the database.
@@ -222,7 +226,7 @@ uint32_t fabricdb_pager_get_application_id(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_file_format_write_version(uint8_t write_version, Pager *pager);
+int fabricdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_version);
 
 /**
 * Returns the file format write version set for the database.
@@ -233,7 +237,7 @@ int fabricdb_pager_set_file_format_write_version(uint8_t write_version, Pager *p
 * @param pager The pager structure for a database connection.
 * @return The file format write version of the database.
 */
-uint8_t fabricdb_pager_get_file_format_write_version(fabricdb_pager *pager);
+uint8_t fabricdb_pager_get_file_format_write_version(Pager *pager);
 
 /**
  * Sets the databases file format read version.
@@ -247,7 +251,7 @@ uint8_t fabricdb_pager_get_file_format_write_version(fabricdb_pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_file_format_read_version(uint8_t read_version, Pager *pager);
+int fabricdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_version);
 
 /**
 * Returns the file format read version set for the database.
@@ -271,7 +275,7 @@ uint8_t fabricdb_pager_get_file_format_read_version(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_bytes_reserved_space(uint8_t num_bytes, Pager *pager);
+int fabricdb_pager_set_bytes_reserved_space(Pager *pager, uint8_t num_bytes);
 
 /**
 * Returns the number of reserved bytes for each pages set for the database.
@@ -296,7 +300,7 @@ uint8_t fabricdb_pager_get_bytes_reserved_space(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_auto_vaccum(uint8_t enabled, Pager *pager);
+int fabricdb_pager_set_auto_vaccum( Pager *pager, uint8_t enabled);
 
 /**
  * Gets whether or not auto vacuum is turned on for the connection.
@@ -321,7 +325,7 @@ uint8_t fabricdb_pager_get_auto_vacuum(Pager *pager);
 * @param pager The pager structure for a database connection.
 * @return FABRICDB_OK on success, other status code on failure.
 */
-int fabricdb_pager_set_auto_vaccum_threshold(uint8_t threshold, Pager *pager);
+int fabricdb_pager_set_auto_vaccum_threshold(Pager *pager, uint8_t threshold);
 
 /**
  * Gets the threshold number of pages before auto-vacuuming is initiated.
@@ -345,7 +349,7 @@ uint8_t fabricdb_pager_get_auto_vacuum_threshold(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRIC_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_cache_size(uint16_t num_pages, Pager *pager);
+int fabricdb_pager_set_cache_size(Pager *pager, uint16_t num_pages);
 
 /**
  * Gets the cache size constraint for the database.

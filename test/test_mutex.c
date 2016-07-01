@@ -39,7 +39,7 @@ void *thread_increment_test_2(void *t) {
     pthread_exit((void *) 0);
 }
 
-char* joinReturnCodeString(code) {
+char* joinReturnCodeString(int code) {
     switch(code) {
         case 0:
             return "SUCCESS";
@@ -59,7 +59,6 @@ void test_enter_mutex() {
     pthread_t th1;
     pthread_t th2;
     pthread_attr_t attr;
-    long t;
     int rc;
 
     fdb_init_mutexes();

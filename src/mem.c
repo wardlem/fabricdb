@@ -66,7 +66,7 @@ void* fabricdb_malloc_zero(size_t num_bytes) {
 
 void *fabricdb_realloc(void *ptr, size_t num_bytes) {
 	size_t old_num_bytes = fabricdb_mem_size(ptr);
-	void *realptr = ptr - FABRICDB_MEM_PREFIX_SIZE;
+	void *realptr = (uint8_t*)ptr - FABRICDB_MEM_PREFIX_SIZE;
 	void *newptr = realloc(realptr, num_bytes + FABRICDB_MEM_PREFIX_SIZE);
 
 	if (newptr == NULL) {
@@ -98,14 +98,14 @@ void fabricdb_free(void *ptr) {
 		return;
 	}
 
-	void *realptr = ptr - FABRICDB_MEM_PREFIX_SIZE;
+	void *realptr = (uint8_t*)ptr - FABRICDB_MEM_PREFIX_SIZE;
 	size_t num_bytes = *((size_t*)realptr);
 	free(realptr);
 	update_memused_free(num_bytes + FABRICDB_MEM_PREFIX_SIZE);
 }
 
 size_t fabricdb_mem_size(void *ptr) {
-	void *realptr = ptr - FABRICDB_MEM_PREFIX_SIZE;
+	void *realptr = (uint8_t*)ptr - FABRICDB_MEM_PREFIX_SIZE;
 	return *((size_t*)realptr);
 }
 

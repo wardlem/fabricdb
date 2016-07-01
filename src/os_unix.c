@@ -312,12 +312,12 @@ static void fdb_inodeinfo_close_unused_files(InodeInfo *info) {
 /******************************************************************
  * FILE HANDLE
  ******************************************************************/
-typedef struct FileHandle {
+struct FileHandle {
     int fd;                /* The file handle */
     char*      filePath;   /* The path used to open the file */
     int        lockLevel;  /* The file lock level this file handle currently has */
     InodeInfo* inodeInfo;  /* Shared among threads */
-} FileHandle;
+};
 
 static FileHandle* fdb_filehandle_new(int fd, const char* filePath, InodeInfo* inodeInfo){
     FileHandle* fh = fdbmalloc(sizeof(FileHandle));

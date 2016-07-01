@@ -1,10 +1,9 @@
-OBJS = os.o mutex.o mem.o byteorder.o
-TESTOBJS = test_os.o test_mutex.o test_mem.o test_byteorder.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
-CFLAGS = -Wall -c $(DEBUG)
-LFLAGS = -Wall $(DEBUG)
+LFLAGS = -std=c99 -pedantic -Wall $(DEBUG)
+CFLAGS = $(LFLAGS) -c $(DEBUG)
 TFLAGS =
 
 clean:
@@ -20,7 +19,10 @@ mutex.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/mutex.c -o mutex.o
 
 os.o: mem.o mutex.o
-	$(CC) $(CFLAGS) $(TFLAGS) src/os.c mem.o mutex.o -o os.o
+	$(CC) $(CFLAGS) $(TFLAGS) src/os.c -o os.o
+
+pager.o: os.o mem.o byteorder.o
+	$(CC) $(CFLAGS) $(TFLAGS) src/pager.c -o pager.o
 
 runtest: set_test_flags $(OBJS)
 	$(CC) $(LFLAGS) $(TFLAGS) test/test_main.c $(OBJS) -o runtest
