@@ -25,5 +25,6 @@ void test_mem();
 void test_byteorder();
 void test_mutex();
 void test_os_unix();
+void test_pager();
 
 #endif /* __FABRICDB_TESTINGCOMMON_H */

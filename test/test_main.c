@@ -10,6 +10,7 @@ void all_tests() {
     fdb_runsuite("Byte Order", test_byteorder);
     fdb_runsuite("Mutex", test_mutex);
     fdb_runsuite("OS UNIX", test_os_unix);
+    fdb_runsuite("Pager", test_pager);
 }
 
 int tests_passed = 0;

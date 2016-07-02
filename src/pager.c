@@ -20,12 +20,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
+#include <assert.h>
 
 #include "byteorder.h"
 #include "pager.h"
 #include "os.h"
 #include "mem.h"
 #include "fabric.h"
+#include "ptrmap.h"
 
 /*******************************************************************
  * FABRICDB HEADER FORMAT
@@ -100,46 +102,44 @@ static const uint8_t HEADER_STRING[16] =
 /*****************************************************************
  * IO / Paging utility functions
  *****************************************************************/
-static int read_page(FileHandle *fh, uint32_t pageno, uint32_t pagesize, Page **pagep) {
-	Page *page = NULL;
-	int rc;
-	*pagep = NULL;
+static int read_page(FileHandle *fh, uint32_t pageno, uint32_t pagesize, uint8_t pageType, Page **pagep) {
+    Page *page = NULL;
+    int rc;
+    *pagep = NULL;
 
-	page = fdbmalloc(sizeof(Page));
-	if (page == NULL) {
-		return FABRICDB_ENOMEM;
-	}
+    page = fdbmalloc(sizeof(Page));
+    if (page == NULL) {
+	    return FABRICDB_ENOMEM;
+    }
 
-	page->data = (fdbmalloczero(pagesize));
+    page->data = (fdbmalloczero(pagesize));
     if (page->data == NULL) {
         fdbfree(page);
         return FABRICDB_ENOMEM;
     }
 
     rc = fdb_read(fh, page->data, (pageno - 1) * pagesize, pagesize);
-	if (rc != FABRICDB_OK) {
-		fdbfree(page->data);
+    if (rc != FABRICDB_OK) {
+        fdbfree(page->data);
         fdbfree(page);
-		return rc;
-	}
+        return rc;
+    }
 
-	page->pageSize = pagesize;
+    page->pageSize = pagesize;
+    page->pageNo = pageno;
+    page->pageType = pageType;
     page->dirty = 0;
     *pagep = page;
 
-	return FABRICDB_OK;
+    return FABRICDB_OK;
 }
 
 static int write_page(FileHandle *fh, Page *page) {
-    // todo
-    return 0;
+    return fdb_write(fh, page->data, (page->pageNo - 1) * page->pageSize, page->pageSize);
 }
 
 static void free_page(Page *page) {
-	if (page->next) {
-		free_page(page->next);
-	}
-	fdbfree(page->data);
+    fdbfree(page->data);
     fdbfree(page);
 }
 
@@ -147,100 +147,38 @@ static void free_page(Page *page) {
 /*****************************************************************
  * Cache routines.
  *****************************************************************/
-
-static int create_cache(uint32_t cache_size, PageCache *out) {
-	// PageCache *cache = fdbmalloczero(sizeof(PageCache) + cache_size * sizeof(Page*));
-	// if (cache == NULL) {
-	// 	*out = NULL;
-	// 	return FABRICDB_ENOMEM;
-	// }
-    //
-	// cache->cacheSize = cache_size;
-	// cache->hashSize = buffer_size;
-	// cache->pages = (Page**)(cache + sizeof(PageCache));
-	// *out = cache;
-
-	return FABRICDB_OK;
+static inline int PageCache_create(PageCache *cache, uint32_t size) {
+    cache->count = 0;
+    return ptrmap_set_size(cache, size * 2);
 }
 
-static void free_cache(PageCache *cache) {
-	int i;
-	Page **pages = cache->pages;
-	for (i = 0; i < cache->hashSize; i++) {
-		if (pages[i] != NULL) {
-			free_page(pages[i]);
-		}
-	}
-	fdbfree(cache);
+static inline int PageCache_put(PageCache *cache, Page *page) {
+    Page *existing = ptrmap_get_or(cache, page->pageNo, NULL);
+    assert(existing == NULL);
+    return ptrmap_set(cache, page->pageNo, page);
 }
 
-static void cache_clear_unused(PageCache *cache) {
-	/* TODO */
+static inline void PageCache_deinit(PageCache *cache) {
+    ptrmap_deinit(cache);
 }
 
-static int cache_put(Page *page, PageCache *cache) {
-	uint32_t pageno, hash;
-	Page **pages = cache->pages;
-	Page *current;
-	if (cache->cacheSize  < 1) {
-		/* No cache... this shouldn't happen, but just in case */
-		return FABRICDB_CACHE_FULL;
-	}
+static inline int PageCache_clear(PageCache *cache) {
+    /* Free the pages */
+    uint32_t index;
+    ptrmap_entry* current;
 
-	pageno = page->pageNo;
-	hash = pageno % cache->hashSize;
+    index = 0;
+    while(index < cache->size) {
+        current = cache->items[index];
+        while (current != NULL) {
+            free_page(current->value);
+            current = current->next;
+        }
+        index++;
+    }
 
-	if(cache->cacheCount == cache->cacheSize) {
-		cache_clear_unused(cache);
-		if (cache->cacheCount == cache->cacheSize) {
-			return FABRICDB_CACHE_FULL;
-		}
-	}
-
-	if (*(pages+hash*sizeof(Page*)) == NULL) {
-		pages[hash] = page;
-		cache->cacheCount++;
-		return FABRICDB_OK;
-	}
-
-	/* Make sure it isn't already in the cache */
-	current = *(pages+hash*sizeof(Page*));
-	while(current != NULL && current->pageNo != pageno) {
-		current = current->next;
-	}
-
-	if (current == NULL) {
-		page->next = *(pages+hash*sizeof(Page*));
-		*(pages+hash*sizeof(Page*)) = page;
-		cache->cacheCount++;
-		return FABRICDB_OK;
-	}
-
-	/* If we have reached this point, it is definitely an error. */
-	return FABRICDB_ECACHE_DUPLICATE_ENTRY;
-
+    return ptrmap_reinit(cache, cache->size);
 }
-
-static Page* cache_get(uint32_t pageno, PageCache *cache) {
-    uint32_t hash;
-	Page *page;
-	Page **pages = cache->pages;
-
-	if (cache->cacheSize  < 1) {
-		/* No cache... this shouldn't happen, but it just in case */
-		return NULL;
-	}
-
-    hash = pageno % cache->hashSize;
-
-	page = *(pages+hash*sizeof(Page*));
-	while(page != NULL && page->pageNo != pageno) {
-		page = page->next;
-	}
-
-	return page;
-}
-
 
 /*******************************************************************
  * Pager creation and initialization routines.
@@ -305,7 +243,6 @@ static int fdb_pager_init_from_file(Pager *pager) {
 	uint8_t header_string[16];
 	uint32_t page_size;
     uint8_t num_reserved_bytes;
-	PageCache *cache = NULL;
 
     page_size = 0;
 
@@ -355,7 +292,7 @@ static int fdb_pager_init_from_file(Pager *pager) {
     }
 
 	/* Read the first page */
-    rc = read_page(pager->dbfh, 1, page_size + num_reserved_bytes, &front_page);
+    rc = read_page(pager->dbfh, 1, page_size + num_reserved_bytes, HEADER_PAGE, &front_page);
 	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
@@ -383,7 +320,7 @@ static int fdb_pager_init_from_file(Pager *pager) {
 	pager->pragma.cacheSize = pager->pragma.defCacheSize;
 
 	/* Initialize the cache. */
-    rc = create_cache(pager->pragma.cacheSize, &pager->cache);
+    rc = PageCache_create(&pager->pageCache, pager->pragma.cacheSize);
 	if (rc != FABRICDB_OK) {
 		goto pager_init_done;
 	}
@@ -396,7 +333,7 @@ static int fdb_pager_init_from_file(Pager *pager) {
 	pager_read_page_types(pager, front_page);
 
 	/* Ignore error code */
-	cache_put(front_page, &pager->cache);
+	PageCache_put(&pager->pageCache, front_page);
 
 	pager_init_done:
 	if (page_size != 0) {
@@ -409,13 +346,11 @@ static int fdb_pager_init_from_file(Pager *pager) {
 		if (front_page != NULL) {
 			free_page(front_page);
 		}
-		if (cache != NULL) {
-			free_cache(cache);
-		}
 		if (pager->dbfh != NULL) {
 			fdb_close_file(pager->dbfh);
 			pager->dbfh = NULL;
 		}
+        PageCache_deinit(&pager->pageCache);
 	}
 
 	return rc;

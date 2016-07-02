@@ -1,4 +1,4 @@
-OBJS = pager.o os.o mutex.o mem.o byteorder.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o ubytearray.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
@@ -8,6 +8,7 @@ TFLAGS =
 
 clean:
 	\rm -f *.o *~ runtest *.gcda *.gcno *.tmp *.gcov || true
+
 
 byteorder.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/byteorder.c -o byteorder.o
@@ -23,6 +24,12 @@ os.o: mem.o mutex.o
 
 pager.o: os.o mem.o byteorder.o
 	$(CC) $(CFLAGS) $(TFLAGS) src/pager.c -o pager.o
+
+ptrmap.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/ptrmap.c -o ptrmap.o
+
+ubytearray.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/ubytearray.c -o ubytearray.o
 
 runtest: set_test_flags $(OBJS)
 	$(CC) $(LFLAGS) $(TFLAGS) test/test_main.c $(OBJS) -o runtest
@@ -40,3 +47,7 @@ coverage: set_coverage_flags test
 	gcov $(OBJS)
 	lcov --directory ./ -c -o application.info
 	genhtml -o ./test_coverage -t "fabricdb test coverage" --num-spaces 4 application.info
+
+generate:
+	./scripts/gen_hashmap.rb ptrmap "void*"
+	./scripts/gen_dynarray.rb ubytearray "uint8_t"

@@ -22,22 +22,23 @@
 #include <stdint.h>
 
 #include "os.h"
+#include "ptrmap.h"
+#include "ubytearray.h"
 
 typedef struct Page {
     uint32_t pageSize;     /* The size of the page - equal to the pragma's page_size */
     uint32_t pageNo;
-    struct Page *next;     /* Used for creating a bucket by the cache handler */
     uint8_t *data;         /* The data for the page, identical to what is on disc */
     uint8_t pageType;      /* The type of page this is */
     uint8_t dirty;         /* Set to 1 if the page needs to be written to disc */
 } Page;
 
-typedef struct PageCache {
-    uint32_t cacheSize;      /* Max size of cache */
-    uint32_t cacheCount;     /* Count of currently cached pages */
-    uint32_t hashSize;       /* The allocated size of pages field (in pointers) */
-    Page **pages;            /* Simple hashmap of cached pages for quick lookup */
-} PageCache;
+typedef ptrmap PageCache;
+
+typedef struct PageTypeCache {
+    ubytearray allPages;
+    ubytearray pageTypes[11]; 
+} PageTypeCache;
 
 typedef struct DBState {
     uint32_t fileChangeCounter;   /* Incremented every time a write transaction completes */
@@ -76,7 +77,7 @@ typedef struct Pager {
 	FileHandle *jfh;           /* File handle for the journal */
 	DBState dbstate;
 	Pragma pragma;
-	PageCache cache;
+	PageCache pageCache;
 } Pager;
 
 
