@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: June 25, 2016
+ * Modified: July 3, 2016
  * Author: Mark Wardle
  * Description:
  *     This file implements memory allocation and handling routines
@@ -30,11 +30,11 @@
  */
 static size_t used_memory = 0;
 
-static void update_memused_alloc(size_t num_bytes) {
+static inline void update_memused_alloc(size_t num_bytes) {
 	used_memory += num_bytes;
 }
 
-static void update_memused_free(size_t num_bytes) {
+static inline void update_memused_free(size_t num_bytes) {
 	used_memory -= num_bytes;
 }
 
@@ -43,6 +43,10 @@ size_t fabricdb_mem_used() {
 }
 
 void* fabricdb_malloc(size_t num_bytes) {
+    if (num_bytes == 0) {
+        return NULL;
+    }
+    
 	void *ptr = malloc(num_bytes + FABRICDB_MEM_PREFIX_SIZE);
 	if (ptr == NULL) {
 		return ptr;
@@ -105,6 +109,9 @@ void fabricdb_free(void *ptr) {
 }
 
 size_t fabricdb_mem_size(void *ptr) {
+    if (ptr == NULL) {
+        return 0;
+    }
 	void *realptr = (uint8_t*)ptr - FABRICDB_MEM_PREFIX_SIZE;
 	return *((size_t*)realptr);
 }

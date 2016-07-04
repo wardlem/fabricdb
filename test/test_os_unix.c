@@ -17,11 +17,12 @@ void test_create_file() {
     fdb_assert("Opening the file was not successful", FABRICDB_OK == rc);
 
     fdb_assert("Returned null", fh);
+    fdb_assert("Lock level wrong", fdb_get_lock_level(fh) == FDB_NO_LOCK);
 
     fdb_assert("Did not open file descriptor", fh->fd >= MIN_FILE_DESCRIPTOR);
     fdb_assert("Did not copy file path", TEMPFILENAME != fh->filePath);
     fdb_assert("Did not set file path", fh->filePath);
-    fdb_assert("Lock level not zeroed", fh->lockLevel == 0);
+    fdb_assert("Lock level not zeroed", fh->lockLevel == FDB_NO_LOCK);
     fdb_assert("Inode Info not set", fh->inodeInfo);
     fdb_assert("Did not track mem usage", fabricdb_mem_used() > 0);
 
@@ -44,6 +45,7 @@ void test_open_file_rdwr() {
 
     fdb_assert("Started test with memory used", fabricdb_mem_used() == 0);
     rc = fdb_open_file_rdwr(TEMPFILENAME, &fh);
+    fdb_assert("Lock level wrong", fdb_get_lock_level(fh) == FDB_NO_LOCK);
     fdb_assert("Opening the file was not successful", FABRICDB_OK == rc);
     fdb_assert("Did not open file descriptor", fh->fd >= MIN_FILE_DESCRIPTOR);
     fdb_assert("Did not copy file path", TEMPFILENAME != fh->filePath);
@@ -70,6 +72,7 @@ void test_open_file_rdonly() {
 
     fdb_assert("Started test with memory used", fabricdb_mem_used() == 0);
     rc = fdb_open_file_rdonly(TEMPFILENAME, &fh);
+    fdb_assert("Lock level wrong", fdb_get_lock_level(fh) == FDB_NO_LOCK);
     fdb_assert("Opening the file was not successful", FABRICDB_OK == rc);
     fdb_assert("Did not open file descriptor", fh->fd >= MIN_FILE_DESCRIPTOR);
     fdb_assert("Did not copy file path", TEMPFILENAME != fh->filePath);

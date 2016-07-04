@@ -220,7 +220,7 @@ InodeInfo* fdb_inodeinfo_new(FileId fileId) {
 
     info->fileId = fileId;
     info->sharedLockCount = 0;
-    info->lockLevel = 0;
+    info->lockLevel = FDB_NO_LOCK;
     info->refCount = 0;
     info->lockCount = 0;
     info->unusedFiles = NULL;
@@ -336,6 +336,7 @@ static FileHandle* fdb_filehandle_new(int fd, const char* filePath, InodeInfo* i
     fh->fd = fd;
     fh->filePath = filePathCopy;
     fh->inodeInfo = inodeInfo;
+    fh->lockLevel = FDB_NO_LOCK;
 
     return fh;
 }
@@ -750,6 +751,10 @@ int fdb_unlock(FileHandle *fh) {
     // end_unlock:
     fdb_leave_mutex(FDB_INODE_MUTEX);
     return rc;
+}
+
+int fdb_get_lock_level(FileHandle *fh) {
+    return fh->lockLevel;
 }
 
 #ifdef FABRICDB_TESTING

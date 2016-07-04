@@ -44,6 +44,7 @@ int fdb_acquire_reserved_lock(FileHandle *fh);
 int fdb_acquire_exclusive_lock(FileHandle *fh);
 int fdb_unlock(FileHandle *fh);
 int fdb_downgrade_lock(FileHandle *fh);
+int fdb_get_lock_level(FileHandle *fh);
 
 
 #endif /* __FABRICDB_OS_H */

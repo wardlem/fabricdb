@@ -23,21 +23,24 @@
 
 #include "os.h"
 #include "ptrmap.h"
-#include "ubytearray.h"
+#include "u8array.h"
+#include "u32array.h"
 
 typedef struct Page {
-    uint32_t pageSize;     /* The size of the page - equal to the pragma's page_size */
+    uint32_t pageSize;       /* The size of the page - equal to the pragma's pageSize + bytesReserved */
+    uint32_t usableSize;     /* Equal to the pragma's pageSize */
     uint32_t pageNo;
-    uint8_t *data;         /* The data for the page, identical to what is on disc */
-    uint8_t pageType;      /* The type of page this is */
-    uint8_t dirty;         /* Set to 1 if the page needs to be written to disc */
+    uint8_t *data;           /* The data for the page, identical to what is on disc */
+    uint8_t pageType;        /* The type of page this is */
+    uint8_t dirty;           /* Set to 1 if the page needs to be written to disc */
 } Page;
 
 typedef ptrmap PageCache;
 
 typedef struct PageTypeCache {
-    ubytearray allPages;
-    ubytearray pageTypes[11]; 
+    u8array allPages;
+    u32array pageTypes[11];
+    uint8_t dirty;
 } PageTypeCache;
 
 typedef struct DBState {
@@ -72,12 +75,13 @@ typedef struct Pragma {
 } Pragma;
 
 typedef struct Pager {
-	const char* filePath;
-	FileHandle *dbfh;          /* File handle for the database */
-	FileHandle *jfh;           /* File handle for the journal */
-	DBState dbstate;
-	Pragma pragma;
-	PageCache pageCache;
+    char* filePath;
+    FileHandle *dbfh;          /* File handle for the database */
+    FileHandle *jfh;           /* File handle for the journal */
+    DBState dbstate;
+    Pragma pragma;
+    PageCache pageCache;
+    PageTypeCache pageTypeCache;
 } Pager;
 
 
@@ -97,7 +101,7 @@ typedef struct Pager {
  *        structure can be stored.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_create(const char* filepath, Pager **pager_p);
+int fdb_pager_create(const char* filepath, Pager **pager_p);
 
 /**
  * Initializes a pager structure from a database file.
@@ -109,7 +113,7 @@ int fabricdb_pager_create(const char* filepath, Pager **pager_p);
  * @param pager A pointer to the pager structure.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_init(Pager *pager);
+int fdb_pager_init(Pager *pager);
 
 /**
  * Creates a new database file according to set pragmas.
@@ -121,7 +125,7 @@ int fabricdb_pager_init(Pager *pager);
  * @param pager A pointer to the pager structure.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_init_file(Pager *pager);
+int fdb_pager_init_file(Pager *pager);
 
 /**
  * Frees all memory associated with a pager object and closes and open files.
@@ -131,7 +135,7 @@ int fabricdb_pager_init_file(Pager *pager);
  * @param pager_ptr A pointer to a pager structure.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_destroy(Pager *pager);
+void fdb_pager_destroy(Pager *pager);
 
 /**
  * Sets the page size for the database.
@@ -149,7 +153,7 @@ int fabricdb_pager_destroy(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_page_size(Pager *pager, uint32_t size);
+int fdb_pager_set_page_size(Pager *pager, uint32_t size);
 
 /**
  * Returns the page size set for the database.
@@ -160,7 +164,7 @@ int fabricdb_pager_set_page_size(Pager *pager, uint32_t size);
  * @param pager The pager structure for a database connection.
  * @return The size of each page in the database in bytes.
  */
-uint32_t fabricdb_pager_get_page_size(Pager *pager);
+uint32_t fdb_pager_get_page_size(Pager *pager);
 
 /**
  * Sets the application version for the file.
@@ -175,7 +179,7 @@ uint32_t fabricdb_pager_get_page_size(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_application_version(Pager *pager, uint32_t version);
+int fdb_pager_set_application_version(Pager *pager, uint32_t version);
 
 /**
 * Returns the application version set for the database.
@@ -186,7 +190,7 @@ int fabricdb_pager_set_application_version(Pager *pager, uint32_t version);
 * @param pager The pager structure for a database connection.
 * @return The user defined application version number.
 */
-uint32_t fabricdb_pager_get_application_version(Pager *pager);
+uint32_t fdb_pager_get_application_version(Pager *pager);
 
 /**
  * Sets the application id for the file.
@@ -201,7 +205,7 @@ uint32_t fabricdb_pager_get_application_version(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_application_id(Pager *pager, uint32_t version);
+int fdb_pager_set_application_id(Pager *pager, uint32_t version);
 
 /**
 * Returns the application id set for the database.
@@ -212,7 +216,7 @@ int fabricdb_pager_set_application_id(Pager *pager, uint32_t version);
 * @param pager The pager structure for a database connection.
 * @return The user defined application version id.
 */
-uint32_t fabricdb_pager_get_application_id(Pager *pager);
+uint32_t fdb_pager_get_application_id(Pager *pager);
 
 
 /**
@@ -227,7 +231,7 @@ uint32_t fabricdb_pager_get_application_id(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_version);
+int fdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_version);
 
 /**
 * Returns the file format write version set for the database.
@@ -238,7 +242,7 @@ int fabricdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_ver
 * @param pager The pager structure for a database connection.
 * @return The file format write version of the database.
 */
-uint8_t fabricdb_pager_get_file_format_write_version(Pager *pager);
+uint8_t fdb_pager_get_file_format_write_version(Pager *pager);
 
 /**
  * Sets the databases file format read version.
@@ -252,7 +256,7 @@ uint8_t fabricdb_pager_get_file_format_write_version(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_version);
+int fdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_version);
 
 /**
 * Returns the file format read version set for the database.
@@ -263,7 +267,7 @@ int fabricdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_versi
 * @param pager The pager structure for a database connection.
 * @return The file format read version of the database.
 */
-uint8_t fabricdb_pager_get_file_format_read_version(Pager *pager);
+uint8_t fdb_pager_get_file_format_read_version(Pager *pager);
 
 /**
  * Sets the number of reserved bytes for each page.
@@ -276,7 +280,7 @@ uint8_t fabricdb_pager_get_file_format_read_version(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_bytes_reserved_space(Pager *pager, uint8_t num_bytes);
+int fdb_pager_set_bytes_reserved_space(Pager *pager, uint8_t num_bytes);
 
 /**
 * Returns the number of reserved bytes for each pages set for the database.
@@ -287,7 +291,7 @@ int fabricdb_pager_set_bytes_reserved_space(Pager *pager, uint8_t num_bytes);
 * @param pager The pager structure for a database connection.
 * @return The number of reserved bytes for each page of the database.
 */
-uint8_t fabricdb_pager_get_bytes_reserved_space(Pager *pager);
+uint8_t fdb_pager_get_bytes_reserved_space(Pager *pager);
 
 /**
  * Sets whether or not the connection should use auto vacuum.
@@ -301,7 +305,7 @@ uint8_t fabricdb_pager_get_bytes_reserved_space(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_auto_vaccum( Pager *pager, uint8_t enabled);
+int fdb_pager_set_auto_vaccum( Pager *pager, uint8_t enabled);
 
 /**
  * Gets whether or not auto vacuum is turned on for the connection.
@@ -312,7 +316,7 @@ int fabricdb_pager_set_auto_vaccum( Pager *pager, uint8_t enabled);
 * @param pager The pager structure for a database connection.
 * @return 0 if auto-vacuum is turned off >0 if turned on.
  */
-uint8_t fabricdb_pager_get_auto_vacuum(Pager *pager);
+uint8_t fdb_pager_get_auto_vacuum(Pager *pager);
 
 /**
 * Sets the auto vacuum threshold.
@@ -326,7 +330,7 @@ uint8_t fabricdb_pager_get_auto_vacuum(Pager *pager);
 * @param pager The pager structure for a database connection.
 * @return FABRICDB_OK on success, other status code on failure.
 */
-int fabricdb_pager_set_auto_vaccum_threshold(Pager *pager, uint8_t threshold);
+int fdb_pager_set_auto_vaccum_threshold(Pager *pager, uint8_t threshold);
 
 /**
  * Gets the threshold number of pages before auto-vacuuming is initiated.
@@ -337,7 +341,7 @@ int fabricdb_pager_set_auto_vaccum_threshold(Pager *pager, uint8_t threshold);
  * @param pager The pager structure for a database connection.
  * @return The number of free pages the database needs to trigger auto-vacuum.
  */
-uint8_t fabricdb_pager_get_auto_vacuum_threshold(Pager *pager);
+uint8_t fdb_pager_get_auto_vacuum_threshold(Pager *pager);
 
 /**
  * Sets the cache size (in pages) for a connection.
@@ -350,7 +354,7 @@ uint8_t fabricdb_pager_get_auto_vacuum_threshold(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRIC_OK on success, other status code on failure.
  */
-int fabricdb_pager_set_cache_size(Pager *pager, uint16_t num_pages);
+int fdb_pager_set_cache_size(Pager *pager, uint16_t num_pages);
 
 /**
  * Gets the cache size constraint for the database.
@@ -361,6 +365,6 @@ int fabricdb_pager_set_cache_size(Pager *pager, uint16_t num_pages);
  * @param pager The pager structure for a database connection.
  * @return The number of pages the database is allowed to cache.
  */
-uint16_t fabricdb_pager_get_cache_size(Pager *pager);
+uint32_t fdb_pager_get_cache_size(Pager *pager);
 
 #endif /* __FABRICDB_PAGER_H */

@@ -1,4 +1,4 @@
-OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o ubytearray.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o u8array.o u32array.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
@@ -28,8 +28,11 @@ pager.o: os.o mem.o byteorder.o
 ptrmap.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/ptrmap.c -o ptrmap.o
 
-ubytearray.o:
-	$(CC) $(CFLAGS) $(TFLAGS) src/ubytearray.c -o ubytearray.o
+u8array.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/u8array.c -o u8array.o
+
+u32array.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/u32array.c -o u32array.o
 
 runtest: set_test_flags $(OBJS)
 	$(CC) $(LFLAGS) $(TFLAGS) test/test_main.c $(OBJS) -o runtest
@@ -50,4 +53,5 @@ coverage: set_coverage_flags test
 
 generate:
 	./scripts/gen_hashmap.rb ptrmap "void*"
-	./scripts/gen_dynarray.rb ubytearray "uint8_t"
+	./scripts/gen_dynarray.rb u8array "uint8_t"
+	./scripts/gen_dynarray.rb u32array "uint32_t"

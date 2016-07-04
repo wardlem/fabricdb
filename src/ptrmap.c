@@ -26,12 +26,12 @@ int ptrmap_set_size(ptrmap* map, uint32_t size) {
 
         indexOld = 0;
         while (indexOld < oldSize) {
-            current = *(oldItems + sizeof(ptrmap_entry) * indexOld);
+            current = oldItems[indexOld];
             while(current != NULL) {
                 next = current->next;
-                indexNew = current-> key % size;
-                current->next = *(newItems + sizeof(ptrmap_entry*) * indexNew);
-                *(newItems + sizeof(ptrmap_entry) * indexNew) = current;
+                indexNew = current->key % size;
+                current->next = newItems[indexNew];
+                newItems[indexNew] = current;
                 current = next;
             }
             indexOld++;
@@ -70,7 +70,8 @@ void ptrmap_deinit(ptrmap* map) {
 
     index = 0;
     while(index < map->size) {
-        current = *(map->items + sizeof(ptrmap_entry*) * index);
+        //current = *(map->items + sizeof(ptrmap_entry*) * index);
+        current = map->items[index];
         ptrmap_free_item(current);
         index++;
     }
@@ -90,7 +91,7 @@ int ptrmap_has(ptrmap* map, uint32_t key) {
     ptrmap_entry* current;
 
     index = key % map->size;
-    current = *(map->items + sizeof(ptrmap_entry*) * index);
+    current = map->items[index];
 
     while(current != NULL) {
         if(current->key == key) {
@@ -104,7 +105,7 @@ int ptrmap_has(ptrmap* map, uint32_t key) {
 
 void* ptrmap_get_or(ptrmap* map, uint32_t key, void* def) {
     uint32_t index = key % map->size;
-    ptrmap_entry* current = *(map->items + sizeof(ptrmap_entry*) * index);
+    ptrmap_entry* current = map->items[index];
 
     while(current != NULL) {
         if(current->key == key) {
@@ -119,7 +120,7 @@ void* ptrmap_get_or(ptrmap* map, uint32_t key, void* def) {
 void** ptrmap_get_ref(ptrmap* map, uint32_t key) {
     void** out = NULL;
     uint32_t index = key % map->size;
-    ptrmap_entry* current = *(map->items + sizeof(ptrmap_entry*) * index);
+    ptrmap_entry* current = map->items[index];
 
     while(current != NULL) {
         if(current->key == key) {
@@ -156,10 +157,10 @@ int ptrmap_set(ptrmap* map, uint32_t key, void* value) {
     entry->next = NULL;
 
     index = key % map->size;
-    current = *(map->items + sizeof(ptrmap_entry*) * index);
+    current = map->items[index];
 
     if (current == NULL) {
-        *(map->items + sizeof(ptrmap_entry*) * index) = entry;
+        map->items[index] = entry;
         map->count++;
     } else {
         while(current != NULL) {
@@ -176,8 +177,16 @@ int ptrmap_set(ptrmap* map, uint32_t key, void* value) {
         }
     }
 
-    map->fillRatio = (float) map->count / (float) map->size;
+    if (map->size == 0) {
+        map->fillRatio = 1.0;
+    } else {
+        map->fillRatio = (float) map->count / (float) map->size;
+    }
 
     return FABRICDB_OK;
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_ptrmap.c"
+#endif
 
