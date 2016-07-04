@@ -132,8 +132,124 @@ void test_init_file() {
     fdb_passed;
 }
 
+void test_init_file_2() {
+    Pager *pager;
+    off_t fileSize;
+    fdb_assert("Started with unclean memory", fabricdb_mem_used() == 0);
+
+    remove(TEMPFILENAME);
+
+    fdb_assert("Could not create pager", fdb_pager_create(TEMPFILENAME, &pager) == FABRICDB_OK);
+
+    fdb_assert("Could not set page size", fdb_pager_set_page_size(pager, 2000) == FABRICDB_OK);
+    fdb_assert("Set page size should fail", fdb_pager_set_page_size(pager, 10) == FABRICDB_EMISUSE_PRAGMA);
+    fdb_assert("Could not get page size", fdb_pager_get_page_size(pager) == 2000);
+
+    fdb_assert("Could not set application version", fdb_pager_set_application_version(pager, 12) == FABRICDB_OK);
+    fdb_assert("Could not set application id", fdb_pager_set_application_id(pager, 24) == FABRICDB_OK);
+    fdb_assert("Did not get correct version", fdb_pager_get_application_version(pager) == 12);
+    fdb_assert("Did not get correct id", fdb_pager_get_application_id(pager) == 24);
+
+    fdb_assert("Set write version didn't fail", fdb_pager_set_file_format_write_version(pager, 2) == FABRICDB_EMISUSE_PRAGMA);
+    fdb_assert("Set read version didn't fail", fdb_pager_set_file_format_read_version(pager, 2) == FABRICDB_EMISUSE_PRAGMA);
+    fdb_assert("Set write version failed", fdb_pager_set_file_format_write_version(pager, 1) == FABRICDB_OK);
+    fdb_assert("Set read version failed", fdb_pager_set_file_format_read_version(pager, 1) == FABRICDB_OK);
+    fdb_assert("Got wrong value for write version", fdb_pager_get_file_format_write_version(pager) == 1);
+    fdb_assert("Got wrong value for read version", fdb_pager_get_file_format_read_version(pager) == 1);
+
+    fdb_assert("Could not set reserved bytes", fdb_pager_set_bytes_reserved_space(pager, 12) == FABRICDB_OK);
+    fdb_assert("Did not get correct reserved bytes", fdb_pager_get_bytes_reserved_space(pager) == 12);
+
+    fdb_assert("Could not set def auto vacuum", fdb_pager_set_def_auto_vacuum(pager, 1) == FABRICDB_OK);
+    fdb_assert("Could not set def auto vacuum thresh", fdb_pager_set_def_auto_vacuum_threshold(pager, 15) == FABRICDB_OK);
+    fdb_assert("Did not get correct def auto vacuum", fdb_pager_get_def_auto_vacuum(pager) == 1);
+    fdb_assert("Did not get correct def auto vacuum thresh", fdb_pager_get_def_auto_vacuum_threshold(pager) == 15);
+
+    fdb_assert("Could not set def cache size", fdb_pager_set_def_cache_size(pager, 150) == FABRICDB_OK);
+    fdb_assert("Did not get correct def cache size", fdb_pager_get_def_cache_size(pager) == 150);
+
+    fdb_assert("Init file failed", fdb_pager_init_file(pager) == FABRICDB_OK);
+
+    fdb_assert("File change counter not 0", pager->dbstate.fileChangeCounter == 0);
+    fdb_assert("File page count not 1", pager->dbstate.filePageCount == 1);
+    fdb_assert("File free page count not 0", pager->dbstate.fileFreePageCount == 0);
+    fdb_assert("File schema cookie not 0", pager->dbstate.schemaCookie == 0);
+
+    fdb_assert("Application id not 0", pager->pragma.applicationId == 24);
+    fdb_assert("Application version not 0", pager->pragma.applicationVersion == 12);
+    fdb_assert("Page size not default", pager->pragma.pageSize == 2000);
+    fdb_assert("File format write version not 1", pager->pragma.fileFormatWriteVersion == 1);
+    fdb_assert("File format read version not 1", pager->pragma.fileFormatReadVersion == 1);
+    fdb_assert("Bytes reserved not 0", pager->pragma.bytesReserved == 12);
+    fdb_assert("Default cache size not default", pager->pragma.defCacheSize == 150);
+    fdb_assert("Def auto vacuum not 0", pager->pragma.defAutoVacuum == 1);
+    fdb_assert("Def auto vacuum thresh not 0", pager->pragma.defAutoVacuumThreshold == 15);
+    fdb_assert("Auto vacuum not 0", pager->pragma.autoVacuum == 1);
+    fdb_assert("Def auto vacuum thresh not 0", pager->pragma.autoVacuumThreshold == 15);
+    fdb_assert("Cache size not default", pager->pragma.cacheSize == 150);
+
+    /* make sure full page was written */
+    fdb_assert("Could not get file size", fdb_file_size(pager->dbfh, &fileSize) == FABRICDB_OK);
+    fdb_assert("Not all bytes written", fileSize == pager->pragma.pageSize + 12);
+
+    fdb_assert("Could set page size", fdb_pager_set_page_size(pager, 2000) != FABRICDB_OK);
+    fdb_assert("Could set application version", fdb_pager_set_application_version(pager, 12) != FABRICDB_OK);
+    fdb_assert("Could set application id", fdb_pager_set_application_id(pager, 24) != FABRICDB_OK);
+    fdb_assert("Could set reserved bytes", fdb_pager_set_bytes_reserved_space(pager, 12) != FABRICDB_OK);
+    fdb_assert("Could set def auto vacuum", fdb_pager_set_def_auto_vacuum(pager, 1) != FABRICDB_OK);
+    fdb_assert("Could set def auto vacuum thresh", fdb_pager_set_def_auto_vacuum_threshold(pager, 15) != FABRICDB_OK);
+    fdb_assert("Could set def cache size", fdb_pager_set_def_cache_size(pager, 150) != FABRICDB_OK);
+
+    fdb_pager_destroy(pager);
+    fdb_assert("Did not clean up all the memory", fabricdb_mem_used() == 0);
+
+    /* Make sure we get the same results when just reading it */
+    fdb_assert("Could not create pager", fdb_pager_create(TEMPFILENAME, &pager) == FABRICDB_OK);
+    fdb_assert("Init file failed", fdb_pager_init(pager) == FABRICDB_OK);
+
+    fdb_assert("File change counter not 0", pager->dbstate.fileChangeCounter == 0);
+    fdb_assert("File page count not 1", pager->dbstate.filePageCount == 1);
+    fdb_assert("File free page count not 0", pager->dbstate.fileFreePageCount == 0);
+    fdb_assert("File schema cookie not 0", pager->dbstate.schemaCookie == 0);
+
+    fdb_assert("Application id not 0", pager->pragma.applicationId == 24);
+    fdb_assert("Application version not 0", pager->pragma.applicationVersion == 12);
+    fdb_assert("Page size not default", pager->pragma.pageSize == 2000);
+    fdb_assert("File format write version not 1", pager->pragma.fileFormatWriteVersion == 1);
+    fdb_assert("File format read version not 1", pager->pragma.fileFormatReadVersion == 1);
+    fdb_assert("Bytes reserved not 0", pager->pragma.bytesReserved == 12);
+    fdb_assert("Default cache size not default", pager->pragma.defCacheSize == 150);
+    fdb_assert("Def auto vacuum not 0", pager->pragma.defAutoVacuum == 1);
+    fdb_assert("Def auto vacuum thresh not 0", pager->pragma.defAutoVacuumThreshold == 15);
+    fdb_assert("Auto vacuum not 0", pager->pragma.autoVacuum == 1);
+    fdb_assert("Def auto vacuum thresh not 0", pager->pragma.autoVacuumThreshold == 15);
+    fdb_assert("Cache size not default", pager->pragma.cacheSize == 150);
+
+    fdb_assert("Could set page size", fdb_pager_set_page_size(pager, 2000) != FABRICDB_OK);
+    fdb_assert("Could set application version", fdb_pager_set_application_version(pager, 12) != FABRICDB_OK);
+    fdb_assert("Could set application id", fdb_pager_set_application_id(pager, 24) != FABRICDB_OK);
+    fdb_assert("Could set reserved bytes", fdb_pager_set_bytes_reserved_space(pager, 12) != FABRICDB_OK);
+    fdb_assert("Could set def auto vacuum", fdb_pager_set_def_auto_vacuum(pager, 1) != FABRICDB_OK);
+    fdb_assert("Could set def auto vacuum thresh", fdb_pager_set_def_auto_vacuum_threshold(pager, 15) != FABRICDB_OK);
+    fdb_assert("Could set def cache size", fdb_pager_set_def_cache_size(pager, 150) != FABRICDB_OK);
+
+    fdb_assert("Could not set auto vacuum", fdb_pager_set_auto_vacuum(pager, 0) == FABRICDB_OK);
+    fdb_assert("Could not set auto vacuum threshold", fdb_pager_set_auto_vacuum_threshold(pager, 2) == FABRICDB_OK);
+    fdb_assert("Could not set cache size", fdb_pager_set_cache_size(pager, 10) == FABRICDB_OK);
+    fdb_assert("Did not get correct value for auto vacuum", fdb_pager_get_auto_vacuum(pager) == 0);
+    fdb_assert("Did not get correct value for auto vacuum thresh", fdb_pager_get_auto_vacuum_threshold(pager) == 2);
+    fdb_assert("Did not get correct value for cache size", fdb_pager_get_cache_size(pager) == 10);
+
+
+    fdb_pager_destroy(pager);
+
+    fdb_assert("Did not clean up all the memory", fabricdb_mem_used() == 0);
+    fdb_passed;
+}
+
 void test_pager() {
     fdb_runtest("Read page", test_read_page);
     fdb_runtest("Create / Destroy database", test_create_destroy_database);
     fdb_runtest("Init file", test_init_file);
+    fdb_runtest("Init file 2", test_init_file_2);
 }

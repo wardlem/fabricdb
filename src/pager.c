@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: July 3, 2016
+ * Modified: July 4, 2016
  * Author: Mark Wardle
  * Description:
  *     Defines low-level file operations.
@@ -86,6 +86,10 @@ static const uint8_t HEADER_STRING[16] =
     {'F','a','b','r','i','c','D','B',' ','v','e','r','s',' ','0','1'};
 
 #define VALID_PAGE_SIZE(v) (v >= 512 && v <= 65536)
+#define VALID_FILE_FORMAT_WRITE_VERSION(v) (v == 1)
+#define VALID_FILE_FORMAT_READ_VERSION(v) (v == 1)
+#define VALID_CACHE_SIZE(v) (1)
+#define PAGER_INITIALIZED(p) (p->dbfh != NULL)
 
 
 /*****************************************************************
@@ -274,6 +278,8 @@ static int pagetypecache_load(PageTypeCache* cache, Pager *pager, Page *page, ui
 
     return rc;
 }
+
+
 
 /*******************************************************************
  * Pager creation and initialization routines.
@@ -534,9 +540,162 @@ void fdb_pager_destroy(Pager *pager) {
     fdbfree(pager);
 }
 
+
+
 /*******************************************************************
  * Pragma manipulation.
  *******************************************************************/
+
+int fdb_pager_set_page_size(Pager *pager, uint32_t size) {
+    if (PAGER_INITIALIZED(pager) || !VALID_PAGE_SIZE(size)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.pageSize = size;
+    return FABRICDB_OK;
+}
+
+uint32_t fdb_pager_get_page_size(Pager *pager) {
+    return pager->pragma.pageSize;
+}
+
+int fdb_pager_set_application_version(Pager *pager, uint32_t version) {
+    if (PAGER_INITIALIZED(pager)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.applicationVersion = version;
+    return FABRICDB_OK;
+}
+
+uint32_t fdb_pager_get_application_version(Pager *pager) {
+    return pager->pragma.applicationVersion;
+}
+
+int fdb_pager_set_application_id(Pager *pager, uint32_t id) {
+    if (PAGER_INITIALIZED(pager)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.applicationId = id;
+    return FABRICDB_OK;
+}
+
+uint32_t fdb_pager_get_application_id(Pager *pager) {
+    return pager->pragma.applicationId;
+}
+
+int fdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_version) {
+    if (PAGER_INITIALIZED(pager) || !VALID_FILE_FORMAT_WRITE_VERSION(write_version)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.fileFormatWriteVersion = write_version;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_file_format_write_version(Pager *pager) {
+    return pager->pragma.fileFormatWriteVersion;
+}
+
+int fdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_version) {
+    if (PAGER_INITIALIZED(pager) || !VALID_FILE_FORMAT_READ_VERSION(read_version)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.fileFormatReadVersion = read_version;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_file_format_read_version(Pager *pager) {
+    return pager->pragma.fileFormatReadVersion;
+}
+
+int fdb_pager_set_bytes_reserved_space(Pager *pager, uint8_t num_bytes) {
+    if (PAGER_INITIALIZED(pager)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.bytesReserved = num_bytes;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_bytes_reserved_space(Pager *pager) {
+    return pager->pragma.bytesReserved;
+}
+
+int fdb_pager_set_def_auto_vacuum(Pager *pager, uint8_t enabled) {
+    if (PAGER_INITIALIZED(pager)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.defAutoVacuum = enabled;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_def_auto_vacuum(Pager *pager) {
+    return pager->pragma.defAutoVacuum;
+}
+
+int fdb_pager_set_def_auto_vacuum_threshold(Pager *pager, uint8_t threshold) {
+    if (PAGER_INITIALIZED(pager)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.defAutoVacuumThreshold = threshold;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_def_auto_vacuum_threshold(Pager *pager) {
+    return pager->pragma.defAutoVacuumThreshold;
+}
+
+int fdb_pager_set_def_cache_size(Pager *pager, uint32_t num_pages) {
+    if (PAGER_INITIALIZED(pager) || !VALID_CACHE_SIZE(num_pages)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.defCacheSize = num_pages;
+    return FABRICDB_OK;
+}
+
+uint32_t fdb_pager_get_def_cache_size(Pager *pager) {
+    return pager->pragma.defCacheSize;
+}
+
+int fdb_pager_set_auto_vacuum(Pager *pager, uint8_t enabled) {
+    pager->pragma.autoVacuum = enabled;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_auto_vacuum(Pager *pager) {
+    return pager->pragma.autoVacuum;
+}
+
+int fdb_pager_set_auto_vacuum_threshold(Pager *pager, uint8_t threshold) {
+    pager->pragma.autoVacuumThreshold = threshold;
+    return FABRICDB_OK;
+}
+
+uint8_t fdb_pager_get_auto_vacuum_threshold(Pager *pager) {
+    return pager->pragma.autoVacuumThreshold;
+}
+
+int fdb_pager_set_cache_size(Pager *pager, uint32_t num_pages) {
+    if (!VALID_CACHE_SIZE(num_pages)) {
+        return FABRICDB_EMISUSE_PRAGMA;
+    }
+
+    pager->pragma.cacheSize = num_pages;
+    return FABRICDB_OK;
+}
+
+uint32_t fdb_pager_get_cache_size(Pager *pager) {
+    return pager->pragma.cacheSize;
+}
+
+
+
 
 
  #ifdef FABRICDB_TESTING

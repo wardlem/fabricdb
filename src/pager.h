@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: January 29, 2016
- * Modified: July 1, 2016
+ * Modified: July 4, 2016
  * Author: Mark Wardle
  * Description:
  *     Declares low-level file operations.
@@ -152,6 +152,8 @@ void fdb_pager_destroy(Pager *pager);
  * @param size The number of bytes each page contains.
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
+ *         FABRICDB_EMISUSE_PRAGMA if the pager is initialized
+ *             or if size < 512 || size > 65536
  */
 int fdb_pager_set_page_size(Pager *pager, uint32_t size);
 
@@ -177,7 +179,8 @@ uint32_t fdb_pager_get_page_size(Pager *pager);
  *
  * @param version The application version number
  * @param pager The pager structure for a database connection.
- * @return FABRICDB_OK on success, other status code on failure.
+ * @return FABRICDB_OK on success
+ *         FABRICDB_EMISUSE_PRAGMA if the pager is already initialized
  */
 int fdb_pager_set_application_version(Pager *pager, uint32_t version);
 
@@ -218,7 +221,6 @@ int fdb_pager_set_application_id(Pager *pager, uint32_t version);
 */
 uint32_t fdb_pager_get_application_id(Pager *pager);
 
-
 /**
  * Sets the databases file format write version.
  *
@@ -229,7 +231,9 @@ uint32_t fdb_pager_get_application_id(Pager *pager);
  *
  * @param write_version The value for the write version.
  * @param pager The pager structure for a database connection.
- * @return FABRICDB_OK on success, other status code on failure.
+ * @return FABRICDB_OK on success
+ *         FABRICDB_EMISUSE_PRAGMA if the pager is initialized
+ *             or if the write version is an unknown value
  */
 int fdb_pager_set_file_format_write_version(Pager *pager, uint8_t write_version);
 
@@ -254,7 +258,9 @@ uint8_t fdb_pager_get_file_format_write_version(Pager *pager);
  *
  * @param read_version The value for the read version.
  * @param pager The pager structure for a database connection.
- * @return FABRICDB_OK on success, other status code on failure.
+ * @return FABRICDB_OK on success
+ *          FABRICDB_EMISUSE_PRAGMA if the pager is initialized
+ *              or if the write version is an unknown value
  */
 int fdb_pager_set_file_format_read_version(Pager *pager, uint8_t read_version);
 
@@ -305,32 +311,106 @@ uint8_t fdb_pager_get_bytes_reserved_space(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRICDB_OK on success, other status code on failure.
  */
-int fdb_pager_set_auto_vaccum( Pager *pager, uint8_t enabled);
+int fdb_pager_set_def_auto_vacuum(Pager *pager, uint8_t enabled);
 
 /**
  * Gets whether or not auto vacuum is turned on for the connection.
  *
-* Calling this function on an unitialized pager may result in an
-* inaccurate (likely a default) value being returned.
-*
-* @param pager The pager structure for a database connection.
-* @return 0 if auto-vacuum is turned off >0 if turned on.
+ * Calling this function on an unitialized pager may result in an
+ * inaccurate (likely a default) value being returned.
+ *
+ * @param pager The pager structure for a database connection.
+ * @return 0 if auto-vacuum is turned off >0 if turned on.
+ */
+uint8_t fdb_pager_get_def_auto_vacuum(Pager *pager);
+
+/**
+ * Sets the auto vacuum threshold.
+ *
+ * A database that uses auto vacuum will remove empty database
+ * pages as soon as the given threshold is reached.
+ *
+ * The default value is 0.
+ *
+ * @param threshold The number of free pages needed to trigger a vacuum operation.
+ * @param pager The pager structure for a database connection.
+ * @return FABRICDB_OK on success, other status code on failure.
+ */
+int fdb_pager_set_def_auto_vacuum_threshold(Pager *pager, uint8_t threshold);
+
+/**
+ * Gets the threshold number of pages before auto-vacuuming is initiated.
+ *
+ * Calling this function on an unitialized pager may result in an
+ * inaccurate (likely a default) value being returned.
+ *
+ * @param pager The pager structure for a database connection.
+ * @return The number of free pages the database needs to trigger auto-vacuum.
+ */
+uint8_t fdb_pager_get_def_auto_vacuum_threshold(Pager *pager);
+
+/**
+ * Sets the cache size (in pages) for a connection.
+ *
+ * More cache = better performance = more memory used.
+ *
+ * The default value is 2000.
+ *
+ * @param num_pages The max number of pages to cache.
+ * @param pager The pager structure for a database connection.
+ * @return FABRIC_OK on success, other status code on failure.
+ */
+int fdb_pager_set_def_cache_size(Pager *pager, uint32_t num_pages);
+
+/**
+ * Gets the cache size constraint for the database.
+ *
+ * Calling this function on an unitialized pager may result in an
+ * inaccurate (likely a default) value being returned.
+ *
+ * @param pager The pager structure for a database connection.
+ * @return The number of pages the database is allowed to cache.
+ */
+uint32_t fdb_pager_get_def_cache_size(Pager *pager);
+
+/**
+ * Sets whether or not the connection should use auto vacuum.
+ *
+ * A database that uses auto vacuum will remove empty database
+ * pages as soon as a set threshold is reached.
+ *
+ * The default value is 0.
+ *
+ * @param enabled 0 to disable auto vacuum, >0 to enable it.
+ * @param pager The pager structure for a database connection.
+ * @return FABRICDB_OK on success, other status code on failure.
+ */
+int fdb_pager_set_auto_vacuum(Pager *pager, uint8_t enabled);
+
+/**
+ * Gets whether or not auto vacuum is turned on for the connection.
+ *
+ * Calling this function on an unitialized pager may result in an
+ * inaccurate (likely a default) value being returned.
+ *
+ * @param pager The pager structure for a database connection.
+ * @return 0 if auto-vacuum is turned off >0 if turned on.
  */
 uint8_t fdb_pager_get_auto_vacuum(Pager *pager);
 
 /**
-* Sets the auto vacuum threshold.
-*
-* A database that uses auto vacuum will remove empty database
-* pages as soon as the given threshold is reached.
-*
-* The default value is 0.
-*
-* @param threshold The number of free pages needed to trigger a vacuum operation.
-* @param pager The pager structure for a database connection.
-* @return FABRICDB_OK on success, other status code on failure.
-*/
-int fdb_pager_set_auto_vaccum_threshold(Pager *pager, uint8_t threshold);
+ * Sets the auto vacuum threshold.
+ *
+ * A database that uses auto vacuum will remove empty database
+ * pages as soon as the given threshold is reached.
+ *
+ * The default value is 0.
+ *
+ * @param threshold The number of free pages needed to trigger a vacuum operation.
+ * @param pager The pager structure for a database connection.
+ * @return FABRICDB_OK on success, other status code on failure.
+ */
+int fdb_pager_set_auto_vacuum_threshold(Pager *pager, uint8_t threshold);
 
 /**
  * Gets the threshold number of pages before auto-vacuuming is initiated.
@@ -354,7 +434,7 @@ uint8_t fdb_pager_get_auto_vacuum_threshold(Pager *pager);
  * @param pager The pager structure for a database connection.
  * @return FABRIC_OK on success, other status code on failure.
  */
-int fdb_pager_set_cache_size(Pager *pager, uint16_t num_pages);
+int fdb_pager_set_cache_size(Pager *pager, uint32_t num_pages);
 
 /**
  * Gets the cache size constraint for the database.
