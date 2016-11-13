@@ -76,6 +76,16 @@ uint64_t intrev64(uint64_t v) {
     return v;
 }
 
+float floatrev32(float v) {
+    memrev32(&v);
+    return v;
+}
+
+double floatrev64(double v) {
+    memrev64(&v);
+    return v;
+}
+
 #ifdef FABRICDB_TESTING
 #include "../test/test_byteorder.c"
 #endif

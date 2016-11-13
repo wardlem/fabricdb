@@ -81,6 +81,8 @@ void memrev64(void *p);
 uint16_t intrev16(uint16_t v);
 uint32_t intrev32(uint32_t v);
 uint64_t intrev64(uint64_t v);
+float floatrev32(float v);
+double floatrev64(double v);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 
@@ -88,15 +90,19 @@ uint64_t intrev64(uint64_t v);
 #define htobei16(v) (int16_t) intrev16((uint16_t)v)
 #define htobeu32(v) intrev32(v)
 #define htobei32(v) (int32_t) intrev32((uint32_t)v)
-#define htobeu64(v) memrev64(v)
-#define htobei64(v) (int64_t) memrev64((uint64_t)v)
+#define htobeu64(v) intrev64(v)
+#define htobei64(v) (int64_t) intrev64((uint64_t)v)
+#define htobef32(v) floatrev32(v)
+#define htobef64(v) floatrev64(v)
 
 #define betohu16(v) intrev16(v)
 #define betohi16(v) (int16_t) intrev16((uint16_t)v)
 #define betohu32(v) intrev32(v)
 #define betohi32(v) (int32_t) intrev32((uint32_t)v)
-#define betohu64(v) memrev64(v)
-#define betohi64(v) (int64_t) memrev64((uint64_t)v)
+#define betohu64(v) intrev64(v)
+#define betohi64(v) (int64_t) intrev64((uint64_t)v)
+#define betohf32(v) floatrev32(v)
+#define betohf64(v) floatrev64(v)
 
 #define htoleu16(v) v
 #define htolei16(v) v
@@ -104,6 +110,8 @@ uint64_t intrev64(uint64_t v);
 #define htolei32(v) v
 #define htoleu64(v) v
 #define htolei64(v) v
+#define htolef32(v) v
+#define htolef64(v) v
 
 #define letohu16(v) v
 #define letohi16(v) v
@@ -111,6 +119,8 @@ uint64_t intrev64(uint64_t v);
 #define letohi32(v) v
 #define letohu64(v) v
 #define letohi64(v) v
+#define letohf32(v) v
+#define letohf64(v) v
 
 #else
 
@@ -120,6 +130,8 @@ uint64_t intrev64(uint64_t v);
 #define htobei32(v) v
 #define htobeu64(v) v
 #define htobei64(v) v
+#define htobef32(v) v
+#define htobef64(v) v
 
 #define betohu16(v) v
 #define betohi16(v) v
@@ -127,20 +139,26 @@ uint64_t intrev64(uint64_t v);
 #define betohi32(v) v
 #define betohu64(v) v
 #define betohi64(v) v
+#define betohf32(v) v
+#define betohf64(v) v
 
 #define htoleu16(v) intrev16(v)
 #define htolei16(v) (int16_t) intrev16((uint16_t)v)
 #define htoleu32(v) intrev32(v)
 #define htolei32(v) (int32_t) intrev32((uint32_t)v)
 #define htoleu64(v) intrev64(v)
-#define htolei64(v) (int64_t) memrev64((uint64_t)v)
+#define htolei64(v) (int64_t) intrev64((uint64_t)v)
+#define htolef32(v) floatrev32(v)
+#define htolef64(v) floatrev64(v)
 
 #define letohu16(v) intrev16(v)
 #define letohi16(v) (int16_t) intrev16((uint16_t)v)
 #define letohu32(v) intrev32(v)
 #define letohi32(v) (int32_t) intrev32((uint32_t)v)
 #define letohu64(v) intrev64(v)
-#define letohi64(v) (int64_t) memrev64((uint64_t)v)
+#define letohi64(v) (int64_t) intrev64((uint64_t)v)
+#define letohf32(v) floatrev32(v)
+#define letohf64(v) floatrev64(v)
 
 #endif /* (BYTE_ORDER == LITTLE_ENDIAN) */
 
