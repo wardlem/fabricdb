@@ -1,3 +1,17 @@
+/*****************************************************************
+ * FabricDB Library u8array Interface
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: 2016-07-04
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
 #include "test_common.h"
 
 void test_u8array_set_size() {

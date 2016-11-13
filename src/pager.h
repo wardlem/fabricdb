@@ -30,6 +30,7 @@ typedef struct Page {
     uint32_t pageSize;       /* The size of the page - equal to the pragma's pageSize + bytesReserved */
     uint32_t usableSize;     /* Equal to the pragma's pageSize */
     uint32_t pageNo;
+    uint32_t refCount;       
     uint8_t *data;           /* The data for the page, identical to what is on disc */
     uint8_t pageType;        /* The type of page this is */
     uint8_t dirty;           /* Set to 1 if the page needs to be written to disc */

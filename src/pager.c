@@ -57,7 +57,8 @@
  * |  48 |    4 | Default Cache Size
  * |  52 |    1 | Default Auto Vacuum Enabled
  * |  53 |    1 | Default Auto Vacuum Threshold
- * |  54 |   46 | Free space for future expansion
+ * |  54 |    2 | RESERVED / UNUSED
+ * |  56 |   46 | Free space for future expansion
  * +-----+------+--------------------------------
  *******************************************************************/
 #define FDB_FILE_HEADER_SIZE 100
@@ -141,6 +142,7 @@ static int read_page(FileHandle *fh, uint32_t pageno, uint32_t pagesize, uint32_
     page->pageNo = pageno;
     page->pageType = pageType;
     page->dirty = 0;
+    page->refCount = 0;
     *pagep = page;
 
     return FABRICDB_OK;
@@ -161,7 +163,7 @@ static void free_page(Page *page) {
  *****************************************************************/
 static inline int pagecache_create(PageCache *cache, uint32_t size) {
     cache->count = 0;
-    return ptrmap_set_size(cache, size * 2);
+    return ptrmap_set_size(cache, size);
 }
 
 static inline int pagecache_has(PageCache *cache, uint32_t pageNo) {
@@ -178,6 +180,9 @@ static inline int pagecache_put(PageCache *cache, Page *page) {
     return ptrmap_set(cache, page->pageNo, page);
 }
 
+static inline uint32_t pagecache_count(PageCache *cache) {
+    return cache->count;
+}
 
 static inline void pagecache_deinit(PageCache *cache) {
     ptrmap_deinit(cache);
@@ -277,6 +282,10 @@ static int pagetypecache_load(PageTypeCache* cache, Pager *pager, Page *page, ui
     }
 
     return rc;
+}
+
+static inline int pagetypecache_get_type(PageTypeCache *cache, uint32_t pageNo) {
+    return u8array_get_or(&cache->allPages, pageNo, UNUSED_PAGE);
 }
 
 
@@ -540,12 +549,42 @@ void fdb_pager_destroy(Pager *pager) {
     fdbfree(pager);
 }
 
+int fdb_pager_fetch_page(Pager *pager, uint32_t pageNo, Page** pagep) {
+    int rc = FABRICDB_OK;
+    int pageSize;
+    uint8_t pageType;
+    Page* page = pagecache_get(&pager->pageCache, pageNo);
+
+    if (page != NULL) {
+        *pagep = page;
+        return rc;
+    }
+
+    /* Missed the cache so load it from disc */
+    pageSize = pager->pragma.pageSize + pager->pragma.bytesReserved;
+    pageType = pagetypecache_get_type(&pager->pageTypeCache, pageNo);
+    rc = read_page(pager->dbfh, pageNo, pageSize, pager->pragma.pageSize, pageType, &page);
+    if (pagecache_count(&pager->pageCache) >= pager->pragma.cacheSize) {
+        /* TODO: need to clear the cache, but which to get rid of?? */
+    }
+
+    if (rc == FABRICDB_OK) {
+        /* Add it to the cache */
+        rc = pagecache_put(&pager->pageCache, page);
+        if (rc != FABRICDB_OK) {
+            fdbfree(page);
+            page = NULL;
+        }
+    }
+
+    *pagep = page;
+    return rc;
+}
 
 
 /*******************************************************************
  * Pragma manipulation.
  *******************************************************************/
-
 int fdb_pager_set_page_size(Pager *pager, uint32_t size) {
     if (PAGER_INITIALIZED(pager) || !VALID_PAGE_SIZE(size)) {
         return FABRICDB_EMISUSE_PRAGMA;
@@ -693,9 +732,6 @@ int fdb_pager_set_cache_size(Pager *pager, uint32_t num_pages) {
 uint32_t fdb_pager_get_cache_size(Pager *pager) {
     return pager->pragma.cacheSize;
 }
-
-
-
 
 
  #ifdef FABRICDB_TESTING
