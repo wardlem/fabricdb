@@ -109,8 +109,3 @@ void fdb_labeledproperty_unload(LabeledProperty* prop, uint8_t* dest) {
     memcpy(dest + FDB_LABELED_PROPERTY_LABELID_OFFSET, &labelIdOut);
     fdb_property_unload(&prop->prop, dest + FDB_LABELED_PROPERTY_PROPERTY_OFFSET);
 }
-
-#define fdb_property_isvoid(p) (p->dataType == DATATYPE_VOID)
-#define fdb_property_isboolean(p) (p->dataType == DATATYPE_TRUE || p->dataType == DATATYPE_FALSE)
-#define fdb_property_isnumeric(p) (p->dataType >= DATATYPE_INTEGER && p->dataType <= DATATYPE_DATE)
-#define fdb_property_isstring(p) (p->dataType >= DATATYPE_STRING_0 && p->DATATYPE <= DATATYPE_STRING)
