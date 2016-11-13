@@ -1,3 +1,17 @@
+/*****************************************************************
+ * FabricDB Library ptrmap Interface
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: 2016-07-04
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
 #ifndef __FABRICDB_ptrmap_H
 #define __FABRICDB_ptrmap_H
 typedef struct ptrmap_entry {
