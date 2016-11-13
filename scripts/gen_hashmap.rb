@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require "date"
+
 N = ARGV[-2]
 T = ARGV[-1]
 
@@ -7,7 +9,21 @@ cfilename = "./src/#{N}.c"
 hfilename = "./src/#{N}.h"
 tfilename = "./test/test_#{N}.c"
 
-c_template = %Q~\#include <stdint.h>
+c_template = %Q~/*****************************************************************
+ * FabricDB Library #{N} Implementation
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: #{Date::today()}
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
+\#include <stdint.h>
 \#include <stdlib.h>
 \#include "#{N}.h"
 \#include "fabric.h"
@@ -201,7 +217,21 @@ int #{N}_set(#{N}* map, uint32_t key, #{T} value) {
 
 ~
 
-h_template = %Q~\#ifndef __FABRICDB_#{N}_H
+h_template = %Q~/*****************************************************************
+ * FabricDB Library #{N} Interface
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: #{Date::today()}
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
+\#ifndef __FABRICDB_#{N}_H
 \#define __FABRICDB_#{N}_H
 typedef struct #{N}_entry {
     uint32_t key;

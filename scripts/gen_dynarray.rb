@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'date'
+
 N = ARGV[-2]
 T = ARGV[-1]
 
@@ -7,7 +9,21 @@ cfilename = "./src/#{N}.c"
 hfilename = "./src/#{N}.h"
 tfilename = "./test/test_#{N}.c"
 
-c_template = %Q~\#include <stdint.h>
+c_template = %Q~/*****************************************************************
+ * FabricDB Library #{N} Implementation
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: #{Date::today()}
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
+\#include <stdint.h>
 \#include <stdlib.h>
 \#include <string.h>
 \#include "#{N}.h"
@@ -135,7 +151,21 @@ int #{N}_push(#{N}* arr, #{T} value);
 \#endif /* __FABRICDB_#{N}_H */
 ~
 
-t_template = %Q~\#include "test_common.h"
+t_template = %Q~/*****************************************************************
+ * FabricDB Library #{N} Interface
+ *
+ * Copyright (c) 2016, Mark Wardle <mwwardle@gmail.com>
+ *
+ * This file may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ *
+ ******************************************************************
+ *
+ * Generated: #{Date::today()}
+ * Author: Mark Wardle
+ *
+ ******************************************************************/
+\#include "test_common.h"
 
 void test_#{N}_set_size() {
     #{N} arr;
