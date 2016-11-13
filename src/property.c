@@ -16,6 +16,9 @@
  *
  ******************************************************************/
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "property.h"
 #include "byteorder.h"
 
@@ -27,7 +30,7 @@ void fdb_property_load(Property* prop, uint8_t* source) {
 
 void fdb_property_unload(Property* prop, uint8_t* dest) {
     dest[FDB_PROPERTY_DATATYPE_OFFSET] = prop->dataType;
-    memcpy(source + FDB_PROPERTY_DATA_OFFSET, &prop->data, 8);
+    memcpy(dest + FDB_PROPERTY_DATA_OFFSET, &prop->data, 8);
 }
 
 uint8_t fdb_property_tobool(Property* prop) {
@@ -67,7 +70,7 @@ double fdb_property_tof64(Property* prop) {
     return 0;
 }
 
-int32_t fbd_property_toi32(Property* prop) {
+int32_t fdb_property_toi32(Property* prop) {
     /* i32 is only used for the uchar type */
     switch(prop->dataType) {
         case DATATYPE_UCHAR:
@@ -77,7 +80,7 @@ int32_t fbd_property_toi32(Property* prop) {
     return 0;
 }
 
-uint32_t fbd_property_tou32(Property* prop) {
+uint32_t fdb_property_tou32(Property* prop) {
     /* u32 is only used for symbol refs */
     switch(prop->dataType) {
         case DATATYPE_SYMBOL:
@@ -92,8 +95,8 @@ ratio fdb_property_toratio(Property* prop) {
     r.denom = 0;
     switch(prop->dataType) {
         case DATATYPE_RATIO:
-            r.numer = letohu32(*((uint32_t*)prop->data));
-            r.denom = letohu32(*((uint32_t*)(prop->data+4)));
+            r.numer = letohi32(*((int32_t*)prop->data));
+            r.denom = letohi32(*((int32_t*)(prop->data+4)));
     }
 
     return r;
@@ -106,6 +109,10 @@ void fdb_labeledproperty_load(LabeledProperty* prop, uint8_t* source) {
 
 void fdb_labeledproperty_unload(LabeledProperty* prop, uint8_t* dest) {
     uint32_t labelIdOut = htoleu32(prop->labelId);
-    memcpy(dest + FDB_LABELED_PROPERTY_LABELID_OFFSET, &labelIdOut);
+    memcpy(dest + FDB_LABELED_PROPERTY_LABELID_OFFSET, &labelIdOut, 4);
     fdb_property_unload(&prop->prop, dest + FDB_LABELED_PROPERTY_PROPERTY_OFFSET);
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_property.c"
+#endif

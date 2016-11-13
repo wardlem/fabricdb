@@ -30,5 +30,6 @@ void test_u8array();
 void test_u32array();
 void test_ptrmap();
 void test_pager();
+void test_property();
 
 #endif /* __FABRICDB_TESTINGCOMMON_H */

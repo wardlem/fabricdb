@@ -20,7 +20,6 @@
 #define __FABRICDB_PROPERTY_H
 
 #include <stdint.h>
-#include <stdlib.h>
 #include "symbol.h"
 
 #define DATATYPE_VOID     0x00
@@ -103,8 +102,8 @@ void fdb_property_unload(Property* prop, uint8_t* dest);
 uint8_t fdb_property_tobool(Property* prop);
 int64_t fdb_property_toi64(Property* prop);
 uint64_t fdb_property_tou64(Property* prop);
-int32_t fbd_property_toi32(Property* prop);
-uint32_t fbd_property_tou32(Property* prop);
+int32_t fdb_property_toi32(Property* prop);
+uint32_t fdb_property_tou32(Property* prop);
 ratio fdb_property_toratio(Property* prop);
 double fdb_property_tof64(Property* prop);
 void fdb_labeledproperty_load(LabeledProperty* prop, uint8_t* source);
@@ -113,7 +112,7 @@ void fdb_labeledproperty_unload(LabeledProperty* prop, uint8_t* dest);
 #define fdb_property_isvoid(p) (p->dataType == DATATYPE_VOID)
 #define fdb_property_isboolean(p) (p->dataType == DATATYPE_TRUE || p->dataType == DATATYPE_FALSE)
 #define fdb_property_isnumeric(p) (p->dataType >= DATATYPE_INTEGER && p->dataType <= DATATYPE_DATE)
-#define fdb_property_isstring(p) (p->dataType >= DATATYPE_STRING_0 && p->DATATYPE <= DATATYPE_STRING)
+#define fdb_property_isstring(p) (p->dataType >= DATATYPE_STRING_0 && p->dataType <= DATATYPE_STRING)
 #define fdb_property_isreference(p) (p->dataType >= DATATYPE_STRING)
 
 #endif /* __FABRICDB_PROPERTY_H */
