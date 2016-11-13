@@ -1,4 +1,4 @@
-OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o u8array.o u32array.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o property.o u8array.o u32array.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
@@ -27,6 +27,9 @@ pager.o: os.o mem.o byteorder.o
 
 ptrmap.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/ptrmap.c -o ptrmap.o
+
+property.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/property.c -o property.o
 
 u8array.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/u8array.c -o u8array.o
