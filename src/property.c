@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: July 8, 2016
- * Modified: November 12, 2016
+ * Modified: November 13, 2016
  * Author: Mark Wardle
  * Description:
  *     Implements operations on Property and LabeledProperty objects.

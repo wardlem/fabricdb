@@ -47,7 +47,7 @@ typedef struct Symbol {
     uint32_t id;
     uint32_t refCount;
     uint64_t stringId;
-    void* stringRef;   /* reference to in memory string object */
+    void* stringRef;   /* reference to in memory fstring object */
 } Symbol;
 
 void fdb_symbol_load(Symbol* symbol, uint32_t id, uint8_t* source);

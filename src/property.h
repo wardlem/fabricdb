@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: July 8, 2016
- * Modified: July 9, 2016
+ * Modified: November 13, 2016
  * Author: Mark Wardle
  * Description:
  *     Defines the Property and LabeledProperty datatypes and operations on them.

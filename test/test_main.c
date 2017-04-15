@@ -15,6 +15,7 @@ void all_tests() {
     fdb_runsuite("ptrmap", test_ptrmap);
     fdb_runsuite("Pager", test_pager);
     fdb_runsuite("Property", test_property);
+    fdb_runsuite("FString", test_fstring);
 }
 
 int tests_passed = 0;
