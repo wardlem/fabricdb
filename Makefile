@@ -1,10 +1,11 @@
-OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o property.o fstring.o symbol.o u8array.o u32array.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o property.o fstring.o symbol.o vertex.o u8array.o u32array.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
 LFLAGS = -std=c99 -pedantic -Wall $(DEBUG)
 CFLAGS = $(LFLAGS) -c $(DEBUG)
 TFLAGS =
+
 
 clean:
 	\rm -f *.o *~ runtest *.gcda *.gcno *.tmp *.gcov || true
@@ -36,6 +37,9 @@ fstring.o: mem.o
 
 symbol.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/symbol.c -o symbol.o
+
+vertex.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/vertex.c -o vertex.o
 
 u8array.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/u8array.c -o u8array.o

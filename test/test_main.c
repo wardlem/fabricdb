@@ -17,11 +17,19 @@ void all_tests() {
     fdb_runsuite("Property", test_property);
     fdb_runsuite("FString", test_fstring);
     fdb_runsuite("Symbol", test_symbol);
+    fdb_runsuite("Vertex", test_vertex);
 }
 
 int tests_passed = 0;
 int tests_run = 0;
 int asserts_run = 0;
+
+#define DO_EXPAND(VAL)  VAL ## 1
+#define EXPAND(VAL)     DO_EXPAND(VAL)
+
+#define DO_TEST(test) do { \
+                                test(); \
+                              } while (0)
 
 int main(int argc, char** argv) {
 

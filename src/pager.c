@@ -97,18 +97,21 @@ static const uint8_t HEADER_STRING[16] =
  * Page types.
  *****************************************************************/
 #define HEADER_PAGE 1  /* The type of the first page of the file */
-#define VERTEX_PAGE 2  /* A page of vertex data */
-#define EDGE_PAGE 3    /* A page of edge data */
-#define STRING_PAGE 4  /* A page for string data */
-#define DOC_PAGE 5     /* For document data */
-#define ARR_PAGE 6     /* For array data */
-#define IND_PAGE 7     /* For indexes */
-#define P_PAGE   8     /* Keeps track of page types */
-#define CONT_PAGE 9    /* A continuation page */
-#define FREE_PAGE 10   /* A free page */
+#define TYPE_PAGE 2    /* A page of type definitions */
+#define RECORD_PAGE 3  /* A page of record data */
+#define VERTEX_PAGE 4  /* A page of vertex data */
+#define EDGE_PAGE 5    /* A page of edge data */
+#define SYMBOL_PAGE 6  /* A page of symbol data */
+#define STRING_PAGE 7  /* A page for string data */
+#define DOC_PAGE 8     /* For document data */
+#define ARR_PAGE 9     /* For array data */
+#define IND_PAGE 10    /* For indexes */
+#define P_PAGE   11    /* Keeps track of page types */
+#define CONT_PAGE 12   /* A continuation page */
+#define FREE_PAGE 13   /* A free page */
 
 #define UNUSED_PAGE 0  /* A page that has never been used */
-#define PAGE_TYPE_COUNT 11
+#define PAGE_TYPE_COUNT 14
 
 
 /*****************************************************************
