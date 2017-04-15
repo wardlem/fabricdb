@@ -9,7 +9,7 @@
  ******************************************************************
  *
  * Created: November 13, 2016
- * Modified: November 13, 2016
+ * Modified: April 15, 2017
  * Author: Mark Wardle
  * Description:
  *     Defines the FString datatype and operations for them.

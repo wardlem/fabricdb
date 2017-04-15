@@ -17,6 +17,8 @@
  ******************************************************************/
 
 #include <stdint.h>
+#include <string.h>
+
 #include "symbol.h"
 #include "byteorder.h"
 
@@ -31,3 +33,7 @@ void fdb_symbol_unload(Symbol* symbol, uint8_t* dest) {
     *((uint32_t*)(dest + FDB_SYMBOL_REFCOUNT_OFFSET)) = htoleu32(symbol->refCount);
     *((uint64_t*)(dest + FDB_SYMBOL_STRINGID_OFFSET)) = htoleu64(symbol->stringId);
 }
+
+#ifdef FABRICDB_TESTING
+#include "../test/test_symbol.c"
+#endif

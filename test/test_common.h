@@ -32,5 +32,6 @@ void test_ptrmap();
 void test_pager();
 void test_property();
 void test_fstring();
+void test_symbol();
 
 #endif /* __FABRICDB_TESTINGCOMMON_H */
