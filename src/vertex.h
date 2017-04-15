@@ -32,21 +32,24 @@
  * +-----+------+------------------------------------
  * |   0 |    4 | symbolId (0 = NULL)
  * |   4 |    9 | value (embedded property)
- * |  13 |    4 | firstEdgeId
+ * |  13 |    4 | firstOutEdgeId
+ * |  17 |    4 | firstInEdgeId
  * +-----+------+------------------------------------
  *
  ******************************************************/
 
 #define FDB_VERTEX_SYMBOLID_OFFSET 0
 #define FDB_VERTEX_VALUE_OFFSET 4
-#define FDB_VERTEX_FIRSTEDGEID_OFFSET 13
-#define FDB_VERTEX_DISKSIZE 17
+#define FDB_VERTEX_FIRSTOUTEDGEID_OFFSET 13
+#define FDB_VERTEX_FIRSTINEDGEID_OFFSET 17
+#define FDB_VERTEX_DISKSIZE 21
 
 typedef struct Vertex {
-    uint32_t id;           /* The id of the vertex */
-    uint32_t symbolId;     /* Reference to a Symbol object */
-    Property value;        /* The value of the vertex */
-    uint32_t firstEdgeId;  /* Reference to an Edge object */
+    uint32_t id;              /* The id of the vertex */
+    uint32_t symbolId;        /* Reference to a Symbol object */
+    Property value;           /* The value of the vertex */
+    uint32_t firstOutEdgeId;  /* Reference to an Edge object */
+    uint32_t firstInEdgeId;   /* Reference to an Edge object */
 } Vertex;
 
 void fdb_vertex_load(Vertex* vert, uint32_t id, uint8_t* source);
