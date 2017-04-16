@@ -97,8 +97,8 @@ static const uint8_t HEADER_STRING[16] =
  * Page types.
  *****************************************************************/
 #define HEADER_PAGE 1  /* The type of the first page of the file */
-#define TYPE_PAGE 2    /* A page of type definitions */
-#define RECORD_PAGE 3  /* A page of record data */
+#define TYPE_PAGE 2    /* A page of type definitions (unused) */
+#define RECORD_PAGE 3  /* A page of record data (unused) */
 #define VERTEX_PAGE 4  /* A page of vertex data */
 #define EDGE_PAGE 5    /* A page of edge data */
 #define SYMBOL_PAGE 6  /* A page of symbol data */

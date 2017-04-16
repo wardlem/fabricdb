@@ -1,4 +1,4 @@
-OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o property.o fstring.o symbol.o vertex.o edge.o u8array.o u32array.o
+OBJS = pager.o os.o mutex.o mem.o byteorder.o ptrmap.o property.o fstring.o symbol.o vertex.o edge.o flist.o document.o u8array.o u32array.o
 CC = gcc
 DEBUG = -g
 TEST = -DFABRICDB_TESTING -o0
@@ -43,6 +43,12 @@ vertex.o:
 
 edge.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/edge.c -o edge.o
+
+flist.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/flist.c -o flist.o
+
+document.o:
+	$(CC) $(CFLAGS) $(TFLAGS) src/document.c -o document.o
 
 u8array.o:
 	$(CC) $(CFLAGS) $(TFLAGS) src/u8array.c -o u8array.o

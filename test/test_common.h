@@ -35,5 +35,7 @@ void test_fstring();
 void test_symbol();
 void test_vertex();
 void test_edge();
+void test_flist();
+void test_document();
 
 #endif /* __FABRICDB_TESTINGCOMMON_H */
