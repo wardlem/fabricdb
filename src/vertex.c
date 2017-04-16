@@ -24,7 +24,7 @@
 
 void fdb_vertex_load(Vertex* vert, uint32_t id, uint8_t* source) {
     vert->id = id;
-    vert->symbolId = letohu16(*((uint16_t*) (source + FDB_VERTEX_SYMBOLID_OFFSET)));
+    vert->symbolId = letohu32(*((uint32_t*) (source + FDB_VERTEX_SYMBOLID_OFFSET)));
     vert->firstOutEdgeId = letohu32(*((uint32_t*) (source + FDB_VERTEX_FIRSTOUTEDGEID_OFFSET)));
     vert->firstInEdgeId = letohu32(*((uint32_t*) (source + FDB_VERTEX_FIRSTINEDGEID_OFFSET)));
 
@@ -32,11 +32,11 @@ void fdb_vertex_load(Vertex* vert, uint32_t id, uint8_t* source) {
 }
 
 void fdb_vertex_unload(Vertex* vert, uint8_t* dest) {
-    uint16_t symbolId = htoleu16(vert->symbolId);
+    uint32_t symbolId = htoleu32(vert->symbolId);
     uint32_t firstOutEdgeId = htoleu32(vert->firstOutEdgeId);
     uint32_t firstInEdgeId = htoleu32(vert->firstInEdgeId);
 
-    memcpy(dest + FDB_VERTEX_SYMBOLID_OFFSET, &symbolId, 2);
+    memcpy(dest + FDB_VERTEX_SYMBOLID_OFFSET, &symbolId, 4);
     memcpy(dest + FDB_VERTEX_FIRSTOUTEDGEID_OFFSET, &firstOutEdgeId, 4);
     memcpy(dest + FDB_VERTEX_FIRSTINEDGEID_OFFSET, &firstInEdgeId, 4);
 

@@ -18,6 +18,7 @@ void all_tests() {
     fdb_runsuite("FString", test_fstring);
     fdb_runsuite("Symbol", test_symbol);
     fdb_runsuite("Vertex", test_vertex);
+    fdb_runsuite("Edge", test_edge);
 }
 
 int tests_passed = 0;

@@ -6,13 +6,13 @@ void test_vertex_load() {
 
     uint8_t buffer[FDB_VERTEX_DISKSIZE];
 
-    uint16_t symbolId = htoleu16(45);
+    uint32_t symbolId = htoleu32(45);
     uint32_t firstOutEdgeId = htoleu32(981);
     uint32_t firstInEdgeId = htoleu32(3902);
     uint8_t dataType = DATATYPE_INTEGER;
     int64_t dataValue = htolei64(1234567);
 
-    memcpy(buffer + FDB_VERTEX_SYMBOLID_OFFSET, &symbolId, 2);
+    memcpy(buffer + FDB_VERTEX_SYMBOLID_OFFSET, &symbolId, 4);
     memcpy(buffer + FDB_VERTEX_VALUE_OFFSET + FDB_PROPERTY_DATATYPE_OFFSET, &dataType, 1);
     memcpy(buffer + FDB_VERTEX_VALUE_OFFSET + FDB_PROPERTY_DATA_OFFSET, &dataValue, 8);
     memcpy(buffer + FDB_VERTEX_FIRSTOUTEDGEID_OFFSET, &firstOutEdgeId, 4);
@@ -32,7 +32,7 @@ void test_vertex_load() {
 
 void test_vertex_unload() {
     Vertex vert;
-    Vertex* vertPtr;
+    Vertex* vertPtr = &vert;
 
     uint8_t buffer[FDB_VERTEX_DISKSIZE];
 

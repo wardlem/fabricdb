@@ -21,7 +21,6 @@
 
 #include <stdint.h>
 
-#include "symbol.h"
 #include "property.h"
 
 /******************************************************
